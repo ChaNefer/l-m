@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "209210387730",
+    "project_id": "les-social",
+    "storage_bucket": "les-social.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:209210387730:android:4ecdb4d4a871ac2799d7cb",
+        "android_client_info": {
+          "package_name": "studio.aleksandraweber.les_social"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAJ6o2nJKYmlIBpwURsddsyOCY8gsKXoLM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
