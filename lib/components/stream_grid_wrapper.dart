@@ -1,15 +1,13 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:les_social/widgets/indicators.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
-typedef ItemBuilder<T> = Widget Function(
-  BuildContext context,
-  DocumentSnapshot doc,
-);
+typedef ItemBuilder<T> = Widget Function(BuildContext context, dynamic data);
 
 class StreamGridWrapper extends StatelessWidget {
-  final Stream<QuerySnapshot<Object?>>? stream;
-  final ItemBuilder<DocumentSnapshot> itemBuilder;
+  final Stream<http.Response>? stream;
+  final ItemBuilder<dynamic> itemBuilder;
   final Axis scrollDirection;
   final bool shrinkWrap;
   final ScrollPhysics physics;
@@ -27,31 +25,44 @@ class StreamGridWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<QuerySnapshot>(
+    return StreamBuilder<http.Response>(
       stream: stream,
       builder: (context, snapshot) {
         if (snapshot.hasData) {
-          var list = snapshot.data!.docs.toList();
-          return list.length == 0
-              ? Container(
-                  child: Center(
-                    child: Text('No Posts'),
-                  ),
-                )
-              : GridView.builder(
-                  padding: padding,
-                  scrollDirection: scrollDirection,
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3,
-                    childAspectRatio: 3 / 3,
-                  ),
-                  itemCount: list.length,
-                  shrinkWrap: shrinkWrap,
-                  physics: physics,
-                  itemBuilder: (BuildContext context, int index) {
-                    return itemBuilder(context, list[index]);
-                  },
-                );
+          var response = snapshot.data!;
+          if (response.statusCode == 200) {
+            var data = jsonDecode(response.body);
+            if (data is List) {
+              return data.isEmpty
+                  ? Container(
+                child: Center(
+                  child: Text('Brak postów do wyświetlenia'),
+                ),
+              )
+                  : GridView.builder(
+                padding: padding,
+                scrollDirection: scrollDirection,
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  childAspectRatio: 3 / 3,
+                ),
+                itemCount: data.length,
+                shrinkWrap: shrinkWrap,
+                physics: physics,
+                itemBuilder: (BuildContext context, int index) {
+                  return itemBuilder(context, data[index]);
+                },
+              );
+            } else {
+              return Center(
+                child: Text('Błąd: Oczekiwano listy danych'),
+              );
+            }
+          } else {
+            return Center(
+              child: Text('Błąd: ${response.statusCode} - ${response.reasonPhrase}'),
+            );
+          }
         } else {
           return circularProgress(context);
         }

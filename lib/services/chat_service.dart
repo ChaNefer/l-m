@@ -1,113 +1,145 @@
+import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:les_social/models/message.dart';
-import 'package:les_social/utils/firebase.dart';
+import 'package:http/http.dart' as http;
 
 class ChatService {
-  FirebaseStorage storage = FirebaseStorage.instance;
+  static const String baseUrl = 'https://lesmind.com/api';
 
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  StreamController<List<Message>> _messageStreamController = StreamController<List<Message>>();
+  StreamController<Map<String, dynamic>> _chatStreamController = StreamController<Map<String, dynamic>>();
 
-  Future<void> sendMessage(Message message, String chatId) async {
-    try {
-      // Sprawdź, czy istnieje dokument czatu w kolekcji newChat
-      DocumentReference newChatDocRef = _firestore.collection('chats').doc(chatId);
-      bool newChatExists = await newChatDocRef.get().then((doc) => doc.exists);
-
-      if (!newChatExists) {
-        // Utwórz dokument czatu w kolekcji newChat, jeśli nie istnieje
-        await newChatDocRef.set({});
-      }
-
-      // Dodaj wiadomość do kolekcji messages wewnątrz kolekcji newChat
-      await newChatDocRef.collection('messages').add(message.toJson());
-      print('Message sent successfully.');
-    } catch (e) {
-      print('Error sending message: $e');
+  Stream<List<Message>> getMessageStream(String chatId) async* {
+    final response = await http.get(Uri.parse('$baseUrl/chats/get_messages.php?chatId=$chatId'));
+    if (response.statusCode == 200) {
+      List<dynamic> messagesJson = json.decode(response.body)['messages'];
+      List<Message> messages = messagesJson.map((msg) => Message.fromJson(msg)).toList();
+      yield messages;
+    } else {
+      throw Exception('Nie udało się załadować wiadomości');
     }
   }
 
+  // Future<List<Message>> fetchMessages(String chatId) async {
+  //   final response = await http.post(
+  //     Uri.parse('https://lesmind.com/api/talks/get_messages.php'),
+  //     headers: {'Content-Type': 'application/json'},
+  //     body: jsonEncode({'chat_id': chatId}),
+  //   );
+  //
+  //   // if (response.statusCode == 200) {
+  //   //   final data = jsonDecode(response.body);
+  //   //   // print("Odpowiedz z serwera: $data" );
+  //   //   if (data['status'] == 'success') {
+  //   //     return List<Map<String, dynamic>>.from(data['messages']);
+  //   //   } else {
+  //   //     throw Exception(data['message']);
+  //   //   }
+  //   // } else {
+  //   //   throw Exception('Błąd połączenia z serwerem');
+  //   // }
+  //
+  //   if (response.statusCode == 200) {
+  //     var messagesJson = jsonDecode(response.body);
+  //     //print("Comments fetched: $messagesJson");
+  //
+  //     // Sprawdź, czy messagesJson jest listą
+  //     if (messagesJson is List) {
+  //       // Mapuj JSON na instancje CommentModel
+  //       return messagesJson.map((comment) => Message.fromJson(comment)).toList();
+  //     } else {
+  //       throw Exception('Invalid response structure: $messagesJson');
+  //     }
+  //   } else {
+  //     throw Exception('Failed to load comments: ${response.body}');
+  //   }
+  //
+  // }
 
-
-
-  Future<String> sendFirstMessage(User sender, User receiver, Message message) async {
-    try {
-      String chatId = _generateChatId(sender.uid, receiver.uid);
-      DocumentReference chatDocRef = _firestore.collection('chats').doc(chatId);
-
-      // Sprawdź, czy dokument czatu istnieje
-      bool chatExists = await chatDocRef.get().then((doc) => doc.exists);
-
-      // Jeśli dokument nie istnieje, utwórz go
-      if (!chatExists) {
-        await chatDocRef.set({});
-      }
-
-      // Dodaj pierwszą wiadomość do podkolekcji 'messages'
-      await chatDocRef.collection('messages').add(message.toJson());
-      print('First message sent successfully.');
-
-      return chatId;
-    } catch (e) {
-      print('Error sending first message: $e');
-      return '';
+  Stream<List<dynamic>> getUserChatsStream(String userId) async* {
+    final response = await http.get(Uri.parse('$baseUrl/chats/get_chats.php?userId=$userId'));
+    if (response.statusCode == 200) {
+      yield json.decode(response.body)['chats'];
+    } else {
+      throw Exception('Nie udało się załadować czatów');
     }
   }
 
-  String _generateChatId(String user1, String user2) {
-    List<String> users = [user1, user2];
-    users.sort();
-    return "${users[0]}-${users[1]}";
-  }
+  // Future<void> sendMessage(Message message, String chatId) async {
+  //   final response = await http.post(
+  //     Uri.parse('$baseUrl/send_message.php'),
+  //     body: {
+  //       'chat_id': chatId,
+  //       'content': message.content,
+  //       'sender_id': message.senderUid,
+  //       'time': message.time?.toIso8601String() ?? '',
+  //       // Add other fields required by your API
+  //     },
+  //   );
+  //
+  //   if (response.statusCode == 200) {
+  //     //print('Message sent successfully');
+  //   } else {
+  //     throw Exception('Failed to send message');
+  //   }
+  // }
+
+  // Future<String> sendFirstMessage(String recipient, Message message) async {
+  //   final response = await http.post(
+  //     Uri.parse('$baseUrl/send_first_message.php'),
+  //     body: {
+  //       'recipient_id': recipient,
+  //       'content': message.content,
+  //       'sender_id': message.senderUid,
+  //       'time': message.time?.toIso8601String() ?? '',
+  //       // Add other fields required by your API
+  //     },
+  //   );
+  //
+  //   if (response.statusCode == 200) {
+  //     return response.body;
+  //   } else {
+  //     throw Exception('Failed to send first message');
+  //   }
+  // }
 
   Future<String> uploadImage(File image, String chatId) async {
-    Reference storageReference =
-        storage.ref().child("chats").child(chatId).child(uuid.v4());
-    UploadTask uploadTask = storageReference.putFile(image);
-    await uploadTask.whenComplete(() => null);
-    String imageUrl = await storageReference.getDownloadURL();
-    return imageUrl;
+    // Implementacja wysyłania obrazu do backendu
+    throw UnimplementedError('Upload image not implemented');
   }
 
-//determine if a user has read a chat and updates how many messages are unread
-  Future<void> setUserRead(String chatId, User user, int count) async {
-    try {
-      print('Setting user read for chatId: $chatId');
+  Future<void> setUserRead(String chatId, String userId, int count) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/set_user_read.php'),
+      body: {
+        'chat_id': chatId,
+        'user_id': userId,
+        'count': count.toString(),
+      },
+    );
 
-      // Pobierz dokument czatu
-      DocumentSnapshot snap = await _firestore.collection('chats').doc(chatId).get();
-
-      // Sprawdź, czy dokument czatu istnieje
-      if (!snap.exists) {
-        print('Document $chatId does not exist.');
-        return;
-      }
-
-      // Aktualizuj informacje o przeczytanych wiadomościach
-      Map<String, dynamic>? data = snap.data() as Map<String, dynamic>?; // Rzutujemy na Map<String, dynamic>
-      Map<String, dynamic> reads = data?['reads'] as Map<String, dynamic>? ?? {}; // Rzutujemy na Map<String, dynamic> i obsługujemy null
-      reads[user.uid!] = count;
-      await _firestore.collection('chats').doc(chatId).update({'reads': reads});
-
-      print('User read set successfully.');
-    } catch (e) {
-      print('Error setting user read: $e');
+    if (response.statusCode == 200) {
+      //print('User read status updated');
+    } else {
+      throw Exception('Failed to update user read status');
     }
   }
 
+  Future<void> setUserTyping(String chatId, String userId, bool userTyping) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/set_user_typing.php'),
+      body: {
+        'chat_id': chatId,
+        'user_id': userId,
+        'typing': userTyping.toString(),
+      },
+    );
 
-//determine when a user has start typing a messageFuture<void>
-  Future<void> setUserTyping(String chatId, User user, bool typing) async {
-    try {
-      print('Setting user typing for chatId: $chatId');
-      DocumentReference chatDocRef = _firestore.collection('chats').doc(chatId);
-      await chatDocRef.update({'typing.${user.uid}': typing});
-      print('User typing status updated successfully.');
-    } catch (e) {
-      print('Error setting user typing: $e');
+    if (response.statusCode == 200) {
+      //print('User typing status updated');
+    } else {
+      throw Exception('Failed to update user typing status');
     }
   }
-
 }

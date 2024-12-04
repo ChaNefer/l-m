@@ -1,5 +1,4 @@
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_chat_bubble/bubble_type.dart';
 import 'package:flutter_chat_bubble/chat_bubble.dart';
@@ -11,7 +10,7 @@ import 'package:timeago/timeago.dart' as timeago;
 class ChatBubbleWidget extends StatefulWidget {
   final String? message;
   final MessageType? type;
-  final Timestamp? time;
+  final DateTime? time;
   final bool? isMe;
 
   ChatBubbleWidget({
@@ -90,7 +89,7 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> {
                         style: TextStyle(
                           color: widget.isMe!
                               ? Colors.white
-                              : Theme.of(context).textTheme.headline6!.color,
+                              : Theme.of(context).textTheme.bodyLarge!.color,
                         ),
                       )
                     : CachedNetworkImage(
@@ -115,9 +114,9 @@ class _ChatBubbleWidgetState extends State<ChatBubbleWidget> {
                 ),
           child: TextTime(
             child: Text(
-              timeago.format(widget.time!.toDate()),
+              timeago.format(widget.time!, locale: 'pl'),
               style: TextStyle(
-                color: Theme.of(context).textTheme.headline6!.color,
+                color: Theme.of(context).textTheme.titleLarge!.color,
                 fontSize: 10.0,
               ),
             ),

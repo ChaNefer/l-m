@@ -12,13 +12,20 @@ import 'package:les_social/utils/constants.dart';
 
 class StatusViewModel extends ChangeNotifier {
   //Services
-  UserService userService = UserService();
+  late UserService userService;
   PostService postService = PostService();
-  StatusService statusService = StatusService();
+  late StatusService statusService;
 
   //Keys
   GlobalKey<ScaffoldState> scaffoldKey = GlobalKey<ScaffoldState>();
   GlobalKey<FormState> formKey = GlobalKey<FormState>();
+
+  StatusViewModel(BuildContext context) {
+    statusService = StatusService(context);
+    userService = UserService(context);
+    //print("Inicjalizacja scaffoldKey z StatusViewModel: $scaffoldKey");
+    //print("Inicjalizacja formKey z StatusViewModel: $formKey");
+  }
 
   //Variables
   bool loading = false;
@@ -37,7 +44,7 @@ class StatusViewModel extends ChangeNotifier {
   int pageIndex = 0;
 
   setDescription(String val) {
-    print('SetDescription $val');
+    //print('SetDescription $val');
     description = val;
     notifyListeners();
   }
@@ -53,6 +60,7 @@ class StatusViewModel extends ChangeNotifier {
       )) as PickedFile?;
       CroppedFile? croppedFile = await ImageCropper().cropImage(
         sourcePath: pickedFile!.path,
+
         aspectRatioPresets: [
           CropAspectRatioPreset.square,
           CropAspectRatioPreset.ratio3x2,
@@ -62,7 +70,7 @@ class StatusViewModel extends ChangeNotifier {
         ],
         uiSettings: [
           AndroidUiSettings(
-            toolbarTitle: 'Przytnij zdj',
+            toolbarTitle: 'Przytnij zdjęcie',
             toolbarColor: Constants.lightAccent,
             toolbarWidgetColor: Colors.white,
             initAspectRatio: CropAspectRatioPreset.original,
@@ -84,7 +92,7 @@ class StatusViewModel extends ChangeNotifier {
     } catch (e) {
       loading = false;
       notifyListeners();
-      showInSnackBar('Cancelled', context);
+      showInSnackBar('Zmiana cofnięta', context);
     }
   }
 

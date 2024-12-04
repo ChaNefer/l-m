@@ -9,6 +9,7 @@ import 'package:les_social/components/text_form_builder.dart';
 import 'package:les_social/utils/validation.dart';
 import 'package:les_social/view_models/auth/login_view_model.dart';
 import 'package:les_social/widgets/indicators.dart';
+import 'package:les_social/services/api_service.dart'; // Upewnij się, że ścieżka jest poprawna
 
 class Login extends StatefulWidget {
   @override
@@ -16,6 +17,14 @@ class Login extends StatefulWidget {
 }
 
 class _LoginState extends State<Login> {
+  late ApiService apiService; // Zmienna do trzymania instancji ApiService
+
+  @override
+  void initState() {
+    super.initState();
+    apiService = ApiService(context); // Inicjalizacja ApiService w initState
+  }
+
   @override
   Widget build(BuildContext context) {
     LoginViewModel viewModel = Provider.of<LoginViewModel>(context);
@@ -98,7 +107,7 @@ class _LoginState extends State<Login> {
     );
   }
 
-  buildForm(BuildContext context, LoginViewModel viewModel) {
+  Widget buildForm(BuildContext context, LoginViewModel viewModel) {
     return Form(
       key: viewModel.formKey,
       autovalidateMode: AutovalidateMode.onUserInteraction,
@@ -168,7 +177,6 @@ class _LoginState extends State<Login> {
                   Theme.of(context).colorScheme.secondary,
                 ),
               ),
-              // highlightElevation: 4.0,
               child: Text(
                 'zaloguj się'.toUpperCase(),
                 style: TextStyle(
@@ -185,3 +193,6 @@ class _LoginState extends State<Login> {
     );
   }
 }
+
+
+

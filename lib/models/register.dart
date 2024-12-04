@@ -2,6 +2,7 @@
 class Register {
   String? username;
   String? email;
+  String? age;
   String? gender;
   String? country;
   String? password;
@@ -12,6 +13,7 @@ class Register {
     final Map<String, dynamic> data = new Map<String, dynamic>();
     data['name'] = this.username;
     data['email'] = this.email;
+    data['age'] = this.age;
     data['gender'] = this.gender;
     data['password'] = this.password;
     data['password_confirmation'] = this.passwordConfirmation;

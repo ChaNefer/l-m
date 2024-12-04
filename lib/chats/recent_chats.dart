@@ -1,175 +1,294 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:les_social/components/chat_item.dart';
-import 'package:les_social/utils/firebase.dart';
-import 'package:les_social/view_models/user/user_view_model.dart';
-import '../models/enum/message_type.dart';
-import '../models/message.dart';
+// import 'package:flutter/material.dart';
+// import 'package:provider/provider.dart';
+// import 'package:http/http.dart' as http;
+// import 'dart:convert';
+//
+// import 'package:les_social/models/message.dart';
+// import 'package:les_social/view_models/user/user_view_model.dart';
+//
+// class Chats extends StatelessWidget {
+//   @override
+//   Widget build(BuildContext context) {
+//     UserViewModel viewModel = Provider.of<UserViewModel>(context, listen: false);
+//
+//     return FutureBuilder(
+//       future: viewModel.currentUserId(),
+//       builder: (context, snapshot) {
+//         if (snapshot.connectionState == ConnectionState.waiting) {
+//           return Center(child: CircularProgressIndicator());
+//         } else if (snapshot.hasError) {
+//           return Center(child: Text("Wystąpił błąd: ${snapshot.error}"));
+//         } else if (!snapshot.hasData || viewModel.user == null) {
+//           return Center(child: Text("Nie udało się załadować danych użytkownika."));
+//         }
+//
+//         return Scaffold(
+//           appBar: AppBar(
+//             leading: GestureDetector(
+//               onTap: () => Navigator.pop(context),
+//               child: Icon(Icons.keyboard_backspace),
+//             ),
+//             title: Text("Rozmowy"),
+//           ),
+//           body: StreamBuilder<List<dynamic>>(
+//             stream: getUserChatsStream(viewModel.user!.id!),
+//             builder: (context, snapshot) {
+//               if (snapshot.connectionState == ConnectionState.waiting) {
+//                 return Center(child: CircularProgressIndicator());
+//               } else if (snapshot.hasError) {
+//                 return Center(child: Text("Wystąpił błąd: ${snapshot.error}"));
+//               } else if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+//                 List<dynamic> chatList = snapshot.data!;
+//                 return ListView.separated(
+//                   itemCount: chatList.length,
+//                   separatorBuilder: (context, index) => Divider(),
+//                   itemBuilder: (context, index) {
+//                     Map<String, dynamic> chat = chatList[index];
+//                     return ListTile(
+//                       leading: CircleAvatar(
+//                         backgroundImage: NetworkImage(chat['photoUrl']),
+//                       ),
+//                       title: Text(chat['username'], style: TextStyle(fontWeight: FontWeight.bold)),
+//                       subtitle: Column(
+//                         crossAxisAlignment: CrossAxisAlignment.start,
+//                         children: [
+//                           Text(chat['last_message'], maxLines: 1, overflow: TextOverflow.ellipsis),
+//                           Text(
+//                             chat['last_message_time'],
+//                             style: TextStyle(fontSize: 12, color: Colors.grey),
+//                           ),
+//                         ],
+//                       ),
+//                       onTap: () {
+//                         // Akcja po kliknięciu w rozmowę
+//                         Navigator.push(
+//                           context,
+//                           MaterialPageRoute(
+//                             builder: (context) => ChatScreen(chatId: chat['chat_id']),
+//                           ),
+//                         );
+//                       },
+//                     );
+//                   },
+//                 );
+//               } else {
+//                 return Center(child: Text("Brak rozmów"));
+//               }
+//             },
+//           ),
+//         );
+//       },
+//     );
+//   }
+//
+//   Stream<List<dynamic>> getUserChatsStream(String userId) async* {
+//     final response = await http.post(
+//       Uri.parse('https://lesmind.com/api/talks/get_chats.php'),
+//       headers: {'Content-Type': 'application/json'},
+//       body: json.encode({'user_id': userId}),
+//     );
+//
+//     if (response.statusCode == 200) {
+//       final data = json.decode(response.body);
+//       if (data['status'] == 'success') {
+//         yield data['chats'];
+//       } else {
+//         throw Exception('Błąd serwera: ${data['message']}');
+//       }
+//     } else {
+//       throw Exception('Nie udało się załadować czatów. Kod: ${response.statusCode}');
+//     }
+//   }
+// }
+//
+// class ChatScreen extends StatelessWidget {
+//   final String chatId;
+//
+//   const ChatScreen({required this.chatId});
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     // Przykładowy ekran czatu
+//     return Scaffold(
+//       appBar: AppBar(
+//         title: Text("Rozmowa"),
+//       ),
+//       body: Center(
+//         child: Text("Czat ID: $chatId"),
+//       ),
+//     );
+//   }
+// }
 
-class Chats extends StatefulWidget {
+import 'package:flutter/material.dart';
+import 'package:les_social/services/auth_service.dart';
+import 'package:provider/provider.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:les_social/view_models/user/user_view_model.dart';
+import '../models/user.dart';
+import 'package:intl/intl.dart';
+
+class Chats extends StatelessWidget {
+  final AuthService _authService = AuthService();
+
+  Future<UserModel?> currentUserId() async {
+    try {
+      var currentUser = await _authService.getCurrentUser();
+      return currentUser;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Pobiera listę rozmów użytkownika
+  Future<List<dynamic>> fetchUserChats(String userId) async {
+    try {
+      final response = await http.post(
+        Uri.parse('https://lesmind.com/api/talks/get_chats.php'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'user_id': userId}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['status'] == 'success') {
+          return data['chats'];
+        } else {
+          throw Exception('Błąd serwera: ${data['message']}');
+        }
+      } else {
+        throw Exception(
+            'Nie udało się załadować czatów. Kod: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Błąd sieci: $e');
+    }
+  }
+
+  String formatTime(String dateTimeString) {
+    try {
+      DateTime parsedData = DateTime.parse(dateTimeString);
+      return DateFormat.Hm().format(parsedData);
+    } catch (e) {
+      return '';
+    }
+  }
+
   @override
-  _ChatsState createState() => _ChatsState();
+  Widget build(BuildContext context) {
+    UserViewModel viewModel = Provider.of<UserViewModel>(context, listen: false);
+
+    return FutureBuilder<String?>(
+      future: viewModel.currentUserId().then((user) => user?.id),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        } else if (snapshot.hasError) {
+          return Scaffold(
+            appBar: AppBar(
+              title: const Text("Rozmowy"),
+            ),
+            body: Center(
+              child: Text("Wystąpił błąd: ${snapshot.error}"),
+            ),
+          );
+        } else if (!snapshot.hasData || snapshot.data == null) {
+          return const Scaffold(
+            body: Center(child: Text("Nie udało się załadować danych użytkownika.")),
+          );
+        }
+
+        final String userId = snapshot.data!;
+
+        return Scaffold(
+          appBar: AppBar(
+            leading: IconButton(
+              icon: const Icon(Icons.keyboard_backspace),
+              onPressed: () => Navigator.pop(context),
+            ),
+            title: const Text("Rozmowy"),
+          ),
+          body: FutureBuilder<List<dynamic>>(
+            future: fetchUserChats(userId),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              } else if (snapshot.hasError) {
+                return Center(
+                  child: Text("Wystąpił błąd: ${snapshot.error}"),
+                );
+              } else if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+                List<dynamic> chatList = snapshot.data!;
+                return ListView.separated(
+                  itemCount: chatList.length,
+                  separatorBuilder: (context, index) => const Divider(),
+                  itemBuilder: (context, index) {
+                    Map<String, dynamic> chat = chatList[index];
+                    return ListTile(
+                      leading: CircleAvatar(
+                        backgroundImage: NetworkImage(
+                          chat['contact_photo'] ??
+                              'https://via.placeholder.com/150',
+                        ),
+                      ),
+                      title: Text(
+                        chat['contact_username'] ?? 'Nieznajomy',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            chat['last_message'] ?? '',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            formatTime(chat['last_message_time']),
+                            style: const TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                ChatScreen(chatId: chat['chat_id']),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                );
+              } else {
+                return const Center(child: Text("Brak rozmów"));
+              }
+            },
+          ),
+        );
+      },
+    );
+  }
 }
 
-class _ChatsState extends State<Chats> {
-  late UserViewModel _userViewModel;
-  bool _isUserSet = false;
-  String? _userId;
+class ChatScreen extends StatelessWidget {
+  final String chatId;
 
-
-  @override
-  void initState() {
-    super.initState();
-    print('Initializing Chats screen...');
-    _userViewModel = Provider.of<UserViewModel>(context, listen: false);
-    _setUser();
-  }
-
-  Future<void> _setUser() async {
-    print('Setting user...');
-    await _userViewModel.setUser();
-    setState(() {
-      _userId = _userViewModel.user!.uid;
-      _isUserSet = true;
-    });
-  }
+  const ChatScreen({required this.chatId, Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        leading: GestureDetector(
-          onTap: () {
-            Navigator.pop(context);
-          },
-          child: Icon(Icons.keyboard_backspace),
-        ),
-        title: Text("Rozmowy"),
+        title: const Text("Rozmowa"),
       ),
-      body: _isUserSet
-          ? _buildChatList()
-          : Center(child: CircularProgressIndicator()),
+      body: Center(
+        child: Text("Czat ID: $chatId"),
+      ),
     );
   }
-
-  Widget _buildChatList() {
-    if (_userViewModel.user != null) {
-      return StreamBuilder<QuerySnapshot>(
-        stream: userChatsStream(_userId!),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          } else if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
-            print('Number of chats retrieved: ${snapshot.data!.docs.length}');
-
-            snapshot.data!.docs.forEach((doc) {
-              print(doc.data());
-            });
-
-            return _buildChatListView(snapshot.data!);
-          } else {
-            return Center(child: Text('Brak rozmów'));
-          }
-        },
-      );
-    } else {
-      return Container();
-    }
-  }
-
-  Stream<QuerySnapshot> userChatsStream(String userId) {
-    final currentUserUid = _userViewModel.user!.uid;
-    print('User ID: $currentUserUid');
-    return chatRef
-        .where('users', arrayContains: [currentUserUid, userId]) // Combine conditions
-        .orderBy('lastTextTime', descending: true)
-        .snapshots();
-  }
-
-
-
-  Stream<QuerySnapshot> messageListStream(String documentId) {
-    return chatRef
-        .doc(documentId)
-        .collection('messages')
-        .orderBy('time', descending: true)
-        .snapshots();
-  }
-
-  Widget _buildChatListView(QuerySnapshot data) {
-    final chatList = data.docs;
-    if (chatList.isNotEmpty) {
-      return ListView.separated(
-        itemCount: chatList.length,
-        itemBuilder: (BuildContext context, int index) {
-          DocumentSnapshot chatListSnapshot = chatList[index];
-          Map<String, dynamic> chatData =
-          chatListSnapshot.data() as Map<String, dynamic>;
-
-          List users = chatData['users'];
-          users.remove(_userViewModel.user!.uid);
-          String recipient = users[0];
-
-          return StreamBuilder<QuerySnapshot>(
-            stream: chatListSnapshot.reference
-                .collection('messages') // Zmieniono na kolekcję Messages
-                .snapshots(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return CircularProgressIndicator();
-              }
-              if (snapshot.hasError) {
-                return Text('Error: ${snapshot.error}');
-              }
-              QuerySnapshot messagesSnapshot = snapshot.data!;
-              int messageCount = messagesSnapshot.docs.length;
-
-              Message? message;
-              if (messagesSnapshot.docs.isNotEmpty) {
-                Map<String, dynamic> messageData =
-                messagesSnapshot.docs.first.data() as Map<String, dynamic>;
-                message = Message.fromJson(messageData);
-              }
-
-              int numberOfReadMessages = 0;
-              if (chatData.containsKey('reads')) {
-                Map<String, dynamic>? reads =
-                chatData['reads'] as Map<String, dynamic>?;
-                numberOfReadMessages = reads?[_userViewModel.user!.uid] ?? 0;
-              }
-
-              return ChatItem(
-                userId: recipient,
-                messageCount: messageCount,
-                msg: message?.content ?? '',
-                time: message?.time != null
-                    ? Timestamp.fromDate(
-                    DateTime.parse(message?.time! as String))
-                    : null,
-                chatId: chatListSnapshot.id,
-                type: MessageType.TEXT,
-                currentUserId: _userViewModel.user!.uid,
-              );
-            },
-          );
-        },
-        separatorBuilder: (BuildContext context, int index) {
-          return Align(
-            alignment: Alignment.centerRight,
-            child: Container(
-              height: 0.5,
-              width: MediaQuery.of(context).size.width / 1.3,
-              child: Divider(),
-            ),
-          );
-        },
-      );
-    } else {
-      return Center(child: Text('Brak rozmów'));
-    }
-  }
-
 }

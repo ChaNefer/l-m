@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:les_social/models/enum/message_type.dart';
 
 class StatusModel {
@@ -8,7 +7,7 @@ class StatusModel {
   String? statusId;
   MessageType? type;
   List<dynamic>? viewers;
-  Timestamp? time;
+  DateTime? time;
 
   StatusModel(
       {this.caption,

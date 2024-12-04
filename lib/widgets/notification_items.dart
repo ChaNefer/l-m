@@ -3,21 +3,26 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:les_social/models/notification.dart';
 import 'package:les_social/pages/profile.dart';
-import 'package:les_social/utils/firebase.dart';
 import 'package:les_social/widgets/view_notification_details.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:les_social/widgets/indicators.dart';
+import 'package:http/http.dart' as http;
+
+import '../models/user.dart';
 
 class ActivityItems extends StatefulWidget {
   final ActivityModel? activity;
+  final UserModel? user;
+  final String profileId;
 
-  ActivityItems({this.activity});
+  ActivityItems({this.activity, this.user, required this.profileId});
 
   @override
   _ActivityItemsState createState() => _ActivityItemsState();
 }
 
 class _ActivityItemsState extends State<ActivityItems> {
+
   @override
   Widget build(BuildContext context) {
     return Dismissible(
@@ -25,7 +30,7 @@ class _ActivityItemsState extends State<ActivityItems> {
       background: stackBehindDismiss(),
       direction: DismissDirection.endToStart,
       onDismissed: (v) {
-        delete();
+        deleteNotification(widget.activity!.userId!, widget.activity!.id!);
       },
       child: ListTile(
         contentPadding: EdgeInsets.symmetric(horizontal: 10.0),
@@ -33,7 +38,7 @@ class _ActivityItemsState extends State<ActivityItems> {
           Navigator.of(context).push(
             CupertinoPageRoute(
               builder: (_) => widget.activity!.type == "follow"
-                  ? Profile(profileId: widget.activity!.userId)
+                  ? Profile(profileId: widget.profileId)
                   : ViewActivityDetails(activity: widget.activity!),
             ),
           );
@@ -90,7 +95,7 @@ class _ActivityItemsState extends State<ActivityItems> {
           ),
         ),
         subtitle: Text(
-          timeago.format(widget.activity!.timestamp!.toDate()),
+          timeago.format(widget.activity!.time!),
         ),
         trailing: previewConfiguration(),
       ),
@@ -109,18 +114,26 @@ class _ActivityItemsState extends State<ActivityItems> {
     );
   }
 
-  delete() {
-    notificationRef
-        .doc(firebaseAuth.currentUser!.uid)
-        .collection('notifications')
-        .doc(widget.activity!.postId)
-        .get()
-        .then((doc) => {
-              if (doc.exists)
-                {
-                  doc.reference.delete(),
-                }
-            });
+  Future<void> deleteNotification(String userId, String id) async {
+    String baseUrl = "https://lesmind.com";
+    try {
+      final url = Uri.parse('$baseUrl/notifications/delete'); // Endpoint do usunięcia powiadomienia
+      final response = await http.post(
+        url,
+        body: {
+          'userId': userId,
+          'id': id,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        //print('Notification deleted successfully');
+      } else {
+        //print('Failed to delete notification');
+      }
+    } catch (e) {
+      //print('Error deleting notification: $e');
+    }
   }
 
   previewConfiguration() {
@@ -133,11 +146,13 @@ class _ActivityItemsState extends State<ActivityItems> {
 
   buildTextConfiguration() {
     if (widget.activity!.type == "like") {
-      return "liked your post";
-    } else if (widget.activity!.type == "follow") {
-      return "is following you";
-    } else if (widget.activity!.type == "comment") {
-      return "commented '${widget.activity!.commentData}'";
+      return "${widget.user!.username} polubiła Twój post";
+    }
+    // else if (widget.activity!.type == "follow") {
+    //   return "obserwuje Cię";
+    // }
+    else if (widget.activity!.type == "comment") {
+      return "${widget.user!.username} skomentowała Twój post! ";
     } else {
       return "Error: Unknown type '${widget.activity!.type}'";
     }
@@ -147,7 +162,7 @@ class _ActivityItemsState extends State<ActivityItems> {
     return ClipRRect(
       borderRadius: BorderRadius.circular(5.0),
       child: CachedNetworkImage(
-        imageUrl: widget.activity!.mediaUrl!,
+        imageUrl: widget.user!.photoUrl!,
         placeholder: (context, url) {
           return circularProgress(context);
         },

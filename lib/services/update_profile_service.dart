@@ -31,7 +31,7 @@
 //       });
 //       return true;
 //     } catch (e) {
-//       print('Error updating more about info: $e');
+//       //print('Error updating more about info: $e');
 //       return false;
 //     }
 //   }

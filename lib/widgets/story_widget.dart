@@ -1,15 +1,17 @@
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/cupertino.dart';
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:http/http.dart' as http;
 import 'package:les_social/models/status.dart';
 import 'package:les_social/models/user.dart';
 import 'package:les_social/posts/story/status_view.dart';
-import 'package:les_social/utils/firebase.dart';
+import 'package:les_social/services/api_service.dart';
 import 'package:les_social/widgets/indicators.dart';
 
 class StoryWidget extends StatelessWidget {
-  const StoryWidget({Key? key}) : super(key: key);
+  const StoryWidget({Key? key, required this.apiService}) : super(key: key);
+
+  final ApiService apiService;
 
   @override
   Widget build(BuildContext context) {
@@ -17,52 +19,31 @@ class StoryWidget extends StatelessWidget {
       height: 100.0,
       child: Padding(
         padding: const EdgeInsets.only(left: 5.0),
-        child: StreamBuilder<QuerySnapshot>(
-          stream: userChatsStream('${firebaseAuth.currentUser!.uid}'),
+        child: FutureBuilder<List<StatusModel>>(
+          future: getStatusList(), // Pobieranie listy statusów z Twojego API
           builder: (context, snapshot) {
-            if (snapshot.hasData) {
-              List chatList = snapshot.data!.docs;
-              if (chatList.isNotEmpty) {
-                return ListView.builder(
-                  padding: const EdgeInsets.symmetric(vertical: 5.0),
-                  itemCount: chatList.length,
-                  scrollDirection: Axis.horizontal,
-                  physics: AlwaysScrollableScrollPhysics(),
-                  itemBuilder: (BuildContext context, int index) {
-                    DocumentSnapshot statusListSnapshot = chatList[index];
-                    return StreamBuilder<QuerySnapshot>(
-                      stream: messageListStream(statusListSnapshot.id),
-                      builder: (context, snapshot) {
-                        if (snapshot.hasData) {
-                          List statuses = snapshot.data!.docs;
-                          StatusModel status = StatusModel.fromJson(
-                            statuses.first.data(),
-                          );
-                          List users = statusListSnapshot.get('whoCanSee');
-                          // remove the current user's id from the Users
-                          // list so we can get the rest of the user's id
-                          users.remove('${firebaseAuth.currentUser!.uid}');
-                          return _buildStatusAvatar(
-                              statusListSnapshot.get('userId'),
-                              statusListSnapshot.id,
-                              status.statusId!,
-                              index);
-                        } else {
-                          return const SizedBox();
-                        }
-                      },
-                    );
-                  },
-                );
-              } else {
-                return Center(
-                  child: Text(
-                    'Kocham życie <3',
-                  ),
-                );
-              }
-            } else {
+            if (snapshot.connectionState == ConnectionState.waiting) {
               return circularProgress(context);
+            } else if (snapshot.hasError) {
+              return Center(
+                child: Text('Error: ${snapshot.error}'),
+              );
+            } else if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+              List<StatusModel> statuses = snapshot.data!;
+              return ListView.builder(
+                padding: const EdgeInsets.symmetric(vertical: 5.0),
+                itemCount: statuses.length,
+                scrollDirection: Axis.horizontal,
+                physics: AlwaysScrollableScrollPhysics(),
+                itemBuilder: (BuildContext context, int index) {
+                  StatusModel status = statuses[index];
+                  return _buildStatusAvatar(status as String, status.status!, status.caption!, status.url! as int);
+                },
+              );
+            } else {
+              return Center(
+                child: Text('No statuses available'),
+              );
             }
           },
         ),
@@ -70,21 +51,22 @@ class StoryWidget extends StatelessWidget {
     );
   }
 
-  _buildStatusAvatar(
-    String userId,
-    String chatId,
-    String messageId,
-    int index,
-  ) {
-    return StreamBuilder(
-      stream: usersRef.doc('$userId').snapshots(),
+  Widget _buildStatusAvatar(
+      String userId,
+      String chatId,
+      String messageId,
+      int index,
+      ) {
+    return FutureBuilder<UserModel>(
+      future: apiService.getUserById(userId), // Przykładowa metoda do pobrania danych użytkownika
       builder: (context, snapshot) {
-        if (snapshot.hasData) {
-          DocumentSnapshot documentSnapshot =
-              snapshot.data as DocumentSnapshot<Object?>;
-          UserModel user = UserModel.fromJson(
-            documentSnapshot.data() as Map<String, dynamic>,
-          );
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const SizedBox(); // Obsługa stanu oczekiwania
+        } else if (snapshot.hasError) {
+          return const SizedBox(); // Obsługa błędów
+        } else if (snapshot.hasData) {
+          UserModel user = snapshot.data!;
+
           return Padding(
             padding: const EdgeInsets.only(right: 10.0),
             child: Column(
@@ -112,7 +94,7 @@ class StoryWidget extends StatelessWidget {
                       boxShadow: [
                         BoxShadow(
                           color: Colors.grey.withOpacity(0.3),
-                          offset: new Offset(0.0, 0.0),
+                          offset: const Offset(0.0, 0.0),
                           blurRadius: 2.0,
                           spreadRadius: 0.0,
                         ),
@@ -132,7 +114,7 @@ class StoryWidget extends StatelessWidget {
                 ),
                 Text(
                   user.username!,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 10.0,
                     fontWeight: FontWeight.bold,
                   ),
@@ -141,17 +123,33 @@ class StoryWidget extends StatelessWidget {
             ),
           );
         } else {
-          return const SizedBox();
+          return const SizedBox(); // Obsługa braku danych
         }
       },
     );
   }
 
-  Stream<QuerySnapshot> userChatsStream(String uid) {
-    return statusRef.where('whoCanSee', arrayContains: '$uid').snapshots();
+
+  Future<List<StatusModel>> getStatusList() async {
+    final url = Uri.parse('https://example.com/api/statuses'); // Zastąp swoim adresem URL API
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      Iterable jsonResponse = jsonDecode(response.body);
+      return jsonResponse.map((status) => StatusModel.fromJson(status)).toList();
+    } else {
+      throw Exception('Failed to load statuses');
+    }
   }
 
-  Stream<QuerySnapshot> messageListStream(String documentId) {
-    return statusRef.doc(documentId).collection('statuses').snapshots();
+  Future<UserModel> getUser(String userId) async {
+    final url = Uri.parse('https://example.com/api/users/$userId'); // Zastąp swoim adresem URL API
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      return UserModel.fromJson(jsonDecode(response.body));
+    } else {
+      throw Exception('Failed to load user');
+    }
   }
 }

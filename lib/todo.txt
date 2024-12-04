@@ -1,0 +1,4 @@
+
+
+TODO: Jakie są błędy?
+    1. Lajki w klasie feeds.dart nie dzialaja poprawnie,

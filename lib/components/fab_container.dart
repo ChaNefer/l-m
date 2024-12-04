@@ -61,7 +61,7 @@ class FabContainer extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 10.0),
                 child: Center(
                   child: Text(
-                    'Choose Upload',
+                    'Dodaj'.toUpperCase(),
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
@@ -76,7 +76,7 @@ class FabContainer extends StatelessWidget {
                   CupertinoIcons.camera_on_rectangle,
                   size: 25.0,
                 ),
-                title: Text('Make a post'),
+                title: Text('Stwórz post'),
                 onTap: () {
                   Navigator.pop(context);
                   Navigator.of(context).push(
@@ -91,11 +91,10 @@ class FabContainer extends StatelessWidget {
                   CupertinoIcons.camera_on_rectangle,
                   size: 25.0,
                 ),
-                title: Text('Add to story'),
+                title: Text('Dodaj do swojej historii'),
                 onTap: () async {
                   // Navigator.pop(context);
                   await viewModel.pickImage(context: context);
-
                 },
               ),
             ],

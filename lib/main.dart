@@ -1,9 +1,9 @@
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_crashlytics/firebase_crashlytics.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:les_social/translations/date_mesaage_pl.dart';
 import 'package:provider/provider.dart';
 import 'package:les_social/components/life_cycle_event_handler.dart';
 import 'package:les_social/landing/landing_page.dart';
@@ -13,18 +13,52 @@ import 'package:les_social/utils/config.dart';
 import 'package:les_social/utils/constants.dart';
 import 'package:les_social/utils/providers.dart';
 import 'package:les_social/view_models/theme/theme_view_model.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-    FlutterLocalNotificationsPlugin();
+FlutterLocalNotificationsPlugin();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Config.initFirebase();
-  FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+  DateMessagesPl.registerLocale();
 
-  // FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-  // registerDeviceForPushNotifications();
-  runApp(MyApp());
+  Future<String> fetchSecretKey() async {
+    final String baseUrl = 'https://lesmind.com/api/secret_config.php';
+
+    try {
+      final response = await http.get(Uri.parse(baseUrl));
+      if (response.statusCode == 200) {
+        // Pobranie zawartości odpowiedzi
+        Map<String, dynamic> data = jsonDecode(response.body);
+        // Sprawdzenie czy klucz został poprawnie pobrany
+        if (data.containsKey('secret_config')) {
+          return data['secret_config'];
+        } else {
+          throw Exception('Nie udało się pobrać klucza.');
+        }
+      } else {
+        throw Exception('Błąd podczas pobierania klucza: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Błąd podczas pobierania klucza: $e');
+    }
+  }
+
+  try {
+    String secretKey = await fetchSecretKey();
+    //print('Pobrany klucz: $secretKey');
+    // Tutaj możesz wykorzystać pobrany klucz do dalszych operacji
+  } catch (e) {
+    //print('Wystąpił błąd: $e');
+  }
+
+  runApp(
+    MultiProvider(
+      providers: providers,
+      child: MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatefulWidget {
@@ -33,69 +67,56 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
+  bool _isLoggedIn = false;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(
-      LifecycleEventHandler(
-        detachedCallBack: () => UserService().setUserStatus(false),
-        resumeCallBack: () => UserService().setUserStatus(true),
-      ),
-    );
-    _firebaseMessaging.requestPermission(
-      announcement: true,
-      carPlay: true,
-      criticalAlert: true,
-    );
-
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      print("onMessage: $message");
-      // Obsługa wiadomości otrzymanych, gdy aplikacja jest aktywna
-    });
-
-    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-
-    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      print('onMessageOpenedApp: $message');
-      // Obsługa wiadomości, które zostały kliknięte, gdy aplikacja jest otwarta i w tle
-    });
-
-    _firebaseMessaging.getToken().then((String? token) {
-      print("FCM Token: $token");
-      // Wyślij token na serwer
-    });
+    _checkIfLoggedIn();
   }
 
-  Future<void> _firebaseMessagingBackgroundHandler(
-      RemoteMessage message) async {
-    print("Handling a background message: ${message.messageId}");
-    // Obsługa wiadomości otrzymanych, gdy aplikacja jest w tle
-  }
+  Future<void> _checkIfLoggedIn() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? token = prefs.getString('jwt_token');
+    String? userId = prefs.getString('userId'); // Pobranie ID użytkownika
 
+    setState(() {
+      _isLoggedIn = token != null && userId != null;
+      _isLoading = false;
+    });
+
+    // Initialize UserService and set user status after the login status is checked
+    if (_isLoggedIn) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final userService = Provider.of<UserService>(context, listen: false);
+        userService.setUserStatus(true); // Ustaw status użytkownika
+        WidgetsBinding.instance.addObserver(
+          LifecycleEventHandler(
+            detachedCallBack: () async =>
+            await userService.setUserStatus(false),
+            resumeCallBack: () async => await userService.setUserStatus(true),
+          ),
+        );
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: providers,
       child: Consumer<ThemeProvider>(
-        builder: (context, ThemeProvider notifier, Widget? child) {
+        builder: (context, themeProvider, child) {
           return MaterialApp(
             title: Constants.appName,
             debugShowCheckedModeBanner: false,
             theme: themeData(
-              notifier.dark ? Constants.darkTheme : Constants.lightTheme,
+              themeProvider.dark ? Constants.darkTheme : Constants.lightTheme,
             ),
-            home: StreamBuilder(
-              stream: FirebaseAuth.instance.authStateChanges(),
-              builder: ((BuildContext context, snapshot) {
-                if (snapshot.hasData) {
-                  return TabScreen();
-                } else
-                  return Landing();
-              }),
-            ),
+            home: _isLoading
+                ? Center(child: CircularProgressIndicator())
+                : (_isLoggedIn ? TabScreen() : Landing()),
           );
         },
       ),
@@ -110,3 +131,6 @@ class _MyAppState extends State<MyApp> {
     );
   }
 }
+
+
+

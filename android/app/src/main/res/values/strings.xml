@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="facebook_app_id">LesMind</string>
+    <string name="fb_login_protocol_scheme">879236273956108</string>
+    <string name="facebook_client_token">fb879236273956108</string>
+    <string name="app_name">LesMind</string>
+</resources>

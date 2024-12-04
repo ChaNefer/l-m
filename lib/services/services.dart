@@ -1,17 +1,30 @@
+import 'dart:convert';
 import 'dart:io';
-import 'package:firebase_storage/firebase_storage.dart';
+import 'package:http/http.dart' as http;
+import 'package:uuid/uuid.dart';
 import 'package:les_social/utils/file_utils.dart';
-import 'package:les_social/utils/firebase.dart';
 
 abstract class Service {
+  Uuid uuid = Uuid();
 
-  //function to upload images to firebase storage and retrieve the url.
-  Future<String> uploadImage(Reference ref, File file) async {
+  // Funkcja do przesyłania obrazów i pobierania URL
+  Future<String> uploadImage(String endpoint, File file) async {
     String ext = FileUtils.getFileExtension(file);
-    Reference storageReference = ref.child("${uuid.v4()}.$ext");
-    UploadTask uploadTask = storageReference.putFile(file);
-    await uploadTask.whenComplete(() => null);
-    String fileUrl = await storageReference.getDownloadURL();
-    return fileUrl;
+    String fileName = "${uuid.v4()}.$ext";
+
+    var request = http.MultipartRequest('POST', Uri.parse("https://lesmind.com/api/photos/upload_profile_pic.php"));     // eksperymntalnie!!!
+    request.files.add(await http.MultipartFile.fromPath('file', file.path, filename: fileName));
+
+    var streamedResponse = await request.send();
+    var response = await http.Response.fromStream(streamedResponse);
+
+    if (response.statusCode == 200) {
+      Map<String, dynamic> responseData = jsonDecode(response.body);
+      String fileUrl = responseData['fileUrl']; // Przykładowo, odczytaj URL z odpowiedzi
+      return fileUrl;
+    } else {
+      //print("Błąd: ${response.reasonPhrase}");
+      throw Exception('Failed to upload image: ${response.reasonPhrase}');
+    }
   }
 }

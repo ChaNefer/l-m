@@ -53,7 +53,7 @@ class _PasswordFormBuilderState extends State<PasswordFormBuilder> {
         children: [
           CustomCard(
             onTap: () {
-              print('clicked');
+              //print('clicked');
             },
             borderRadius: BorderRadius.circular(40.0),
             child: Container(

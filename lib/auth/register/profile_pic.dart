@@ -7,6 +7,10 @@ import 'package:les_social/view_models/auth/posts_view_model.dart';
 import 'package:les_social/widgets/indicators.dart';
 
 class ProfilePicture extends StatefulWidget {
+  final String userId;
+
+  ProfilePicture({required this.userId});
+
   @override
   _ProfilePictureState createState() => _ProfilePictureState();
 }
@@ -14,7 +18,13 @@ class ProfilePicture extends StatefulWidget {
 class _ProfilePictureState extends State<ProfilePicture> {
   @override
   Widget build(BuildContext context) {
-    PostsViewModel viewModel = Provider.of<PostsViewModel>(context);
+    final viewModel = Provider.of<PostsViewModel>(context);
+
+    // Jeśli userId jest już ustawiony, nie ma potrzeby ustawiać go ponownie
+    if (viewModel.userId != widget.userId) {
+      viewModel.setUserId(widget.userId);
+    }
+
     return WillPopScope(
       onWillPop: () async {
         viewModel.resetPost();
@@ -34,41 +44,39 @@ class _ProfilePictureState extends State<ProfilePicture> {
             padding: EdgeInsets.symmetric(horizontal: 30.0),
             children: [
               InkWell(
-                onTap: () => showImageChoices(context, viewModel),
+                onTap: () => _showImageChoices(context, viewModel),
                 child: Container(
                   width: MediaQuery.of(context).size.width,
                   height: MediaQuery.of(context).size.width - 30,
                   decoration: BoxDecoration(
                     color: Colors.grey[300],
-                    borderRadius: BorderRadius.all(
-                      Radius.circular(3.0),
-                    ),
+                    borderRadius: BorderRadius.all(Radius.circular(3.0)),
                     border: Border.all(
                       color: Theme.of(context).colorScheme.secondary,
                     ),
                   ),
                   child: viewModel.imgLink != null
                       ? CustomImage(
-                          imageUrl: viewModel.imgLink,
-                          width: MediaQuery.of(context).size.width,
-                          height: MediaQuery.of(context).size.width - 30,
-                          fit: BoxFit.cover,
-                        )
+                    imageUrl: viewModel.imgLink!,
+                    width: MediaQuery.of(context).size.width,
+                    height: MediaQuery.of(context).size.width - 30,
+                    fit: BoxFit.cover,
+                  )
                       : viewModel.mediaUrl == null
-                          ? Center(
-                              child: Text(
-                                'Kliknij, aby dodać',
-                                style: TextStyle(
-                                  color: Theme.of(context).colorScheme.secondary,
-                                ),
-                              ),
-                            )
-                          : Image.file(
-                              viewModel.mediaUrl!,
-                              width: MediaQuery.of(context).size.width,
-                              height: MediaQuery.of(context).size.width - 30,
-                              fit: BoxFit.cover,
-                            ),
+                      ? Center(
+                    child: Text(
+                      'Kliknij, aby dodać',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.secondary,
+                      ),
+                    ),
+                  )
+                      : Image.file(
+                    viewModel.mediaUrl!,
+                    width: MediaQuery.of(context).size.width,
+                    height: MediaQuery.of(context).size.width - 30,
+                    fit: BoxFit.cover,
+                  ),
                 ),
               ),
               SizedBox(height: 10.0),
@@ -89,7 +97,13 @@ class _ProfilePictureState extends State<ProfilePicture> {
                       child: Text('gotowe'.toUpperCase()),
                     ),
                   ),
-                  onPressed: () => viewModel.uploadProfilePicture(context),
+                  onPressed: () {
+                    if (viewModel.userId != null) {
+                      viewModel.uploadProfilePicture(context, viewModel.userId!);
+                    } else {
+                      //print('userId is null');
+                    }
+                  },
                 ),
               ),
             ],
@@ -99,7 +113,7 @@ class _ProfilePictureState extends State<ProfilePicture> {
     );
   }
 
-  showImageChoices(BuildContext context, PostsViewModel viewModel) {
+  void _showImageChoices(BuildContext context, PostsViewModel viewModel) {
     showModalBottomSheet(
       context: context,
       shape: RoundedRectangleBorder(
@@ -127,7 +141,7 @@ class _ProfilePictureState extends State<ProfilePicture> {
                 title: Text('Kamera'),
                 onTap: () {
                   Navigator.pop(context);
-                  viewModel.pickImage(camera: true);
+                  viewModel.pickImage(camera: true, context: context);
                 },
               ),
               ListTile(
@@ -135,8 +149,7 @@ class _ProfilePictureState extends State<ProfilePicture> {
                 title: Text('Galeria'),
                 onTap: () {
                   Navigator.pop(context);
-                  viewModel.pickImage();
-                  // viewModel.pickProfilePicture();
+                  viewModel.pickImage(context: context);
                 },
               ),
             ],
@@ -146,3 +159,6 @@ class _ProfilePictureState extends State<ProfilePicture> {
     );
   }
 }
+
+
+

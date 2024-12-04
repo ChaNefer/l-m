@@ -1,0 +1,18 @@
+{
+  "prefixAgo": "",
+  "prefixFromNow": "za",
+  "suffixAgo": "temu",
+  "suffixFromNow": "",
+  "lessThanOneMinute": "chwilę temu",
+  "aboutAMinute": "około minutę",
+  "minutes": "%i minut",
+  "aboutAnHour": "około godzinę",
+  "hours": "%i godzin",
+  "aDay": "dzień",
+  "days": "%i dni",
+  "aboutAMonth": "około miesiąc",
+  "months": "%i miesiące",
+  "aboutAYear": "około rok",
+  "years": "%i lat",
+  "wordSeparator": " "
+}

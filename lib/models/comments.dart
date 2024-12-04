@@ -1,35 +1,54 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class CommentModel {
-  String? username;
-  String? comment;
-  Timestamp? timestamp;
-  String? userDp;
-  String? userId;
+  final int id;
+  final String postId;
+  final int userId;
+  final String comment;
+  final DateTime createdAt;
+  final String username;
+  final String userDp;
+  final String? reply;
+  final int? parentId;
 
   CommentModel({
-    this.username,
-    this.comment,
-    this.timestamp,
-    this.userDp,
-    this.userId,
+    required this.id,
+    required this.postId,
+    required this.userId,
+    required this.comment,
+    required this.createdAt,
+    required this.username,
+    required this.userDp,
+    required this.reply,
+    this.parentId,
   });
 
-  CommentModel.fromJson(Map<String, dynamic> json) {
-    username = json['username'];
-    comment = json['comment'];
-    timestamp = json['timestamp'];
-    userDp = json['userDp'];
-    userId = json['userId'];
+  factory CommentModel.fromJson(Map<String, dynamic> json) {
+    return CommentModel(
+      id: json['id'] is String ? int.tryParse(json['id']) ?? 0 : json['id'],
+      postId: json['postId'] ?? '', // Upewnij się, że to nie jest null
+      userId: json['userId'] is String ? int.tryParse(json['userId']) ?? 0 : json['userId'],
+      comment: json['comment'] ?? '', // Upewnij się, że to nie jest null
+      createdAt: DateTime.parse(json['createdAt']),
+      username: json['username'] ?? '', // Upewnij się, że to nie jest null
+      userDp: json['userDp'] ?? '', // Upewnij się, że to nie jest null
+      parentId: json['parentId'], // To może być null
+      reply: json['reply'] ?? '', // Upewnij się, że to nie jest null
+    );
   }
 
   Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = new Map<String, dynamic>();
-    data['username'] = this.username;
-    data['comment'] = this.comment;
-    data['timestamp'] = this.timestamp;
-    data['userDp'] = this.userDp;
-    data['userId'] = this.userId;
-    return data;
+    return {
+      'id': id,
+      'postId': postId,
+      'userId': userId,
+      'comment': comment,
+      'createdAt': createdAt.toIso8601String(),
+      'username': username,
+      'userDp': userDp,
+      'parentId': parentId,
+      'reply': reply ?? ''
+    };
   }
 }
+
+
+

@@ -1,11 +1,10 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Status {
   final String uid;
   final String username;
   final List<String>? description;
   final List<String> photoUrl;
-  final Timestamp createdAt;
+  final DateTime createdAt;
   final String profilePic;
   final String statusId;
   final List<String> whoCanSee;

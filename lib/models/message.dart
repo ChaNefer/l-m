@@ -1,52 +1,88 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+
 import 'package:les_social/models/enum/message_type.dart';
+import 'package:les_social/services/chat_service.dart';
 
 class Message {
+  String? receiverUid;
+  String? receiverPhotoUrl;
   String? content;
+  String? chatId;
   String? senderUid;
+  String? senderUsername;
+  String? senderPhotoUrl;
   String? messageId;
-  String? chatId; // Dodane pole chatId
   MessageType? type;
-  String? imageUrl; // Dodane pole imageUrl lub imagePath
-  Timestamp? time;
+  DateTime? time;
 
   Message({
     this.content,
     this.senderUid,
+    this.senderUsername,
+    this.senderPhotoUrl,
+    this.receiverUid,
+    this.receiverPhotoUrl,
     this.messageId,
-    this.chatId,
     this.type,
-    this.imageUrl,
     this.time,
+    this.chatId
   });
 
-  Message.fromJson(Map<String, dynamic> json) {
-    content = json['content'];
-    senderUid = json['senderUid'];
-    messageId = json['messageId'];
-    chatId = json['chatId']; // Dodane pole chatId
-    if (json['type'] == 'text') {
-      type = MessageType.TEXT;
-    } else if (json['type'] == 'image') {
-      type = MessageType.IMAGE;
-      imageUrl = json['imageUrl']; // Dodane pole imageUrl lub imagePath
-    }
-    time = json['time'];
+  // Konstruktor deserializujący z JSON-a
+  factory Message.fromJson(Map<String, dynamic> json) {
+    return Message(
+      content: json['content'],
+      senderUid: json['senderUid'],
+      senderUsername: json['senderUsername'],
+      senderPhotoUrl: json['senderPhotoUrl'],
+      receiverUid: json['receiverUid'],
+      receiverPhotoUrl: json['receiverPhotoUrl'],
+      messageId: json['messageId'],
+      chatId: json['chatId'],
+      type: _parseMessageType(json['type']),
+      time: _parseDateTime(json['time']),
+    );
   }
 
-  Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = new Map<String, dynamic>();
-    data['content'] = this.content;
-    data['senderUid'] = this.senderUid;
-    data['messageId'] = this.messageId;
-    data['chatId'] = this.chatId; // Dodane pole chatId
-    if (this.type == MessageType.TEXT) {
-      data['type'] = 'text';
-    } else if (this.type == MessageType.IMAGE) {
-      data['type'] = 'image';
-      data['imageUrl'] = this.imageUrl; // Dodane pole imageUrl lub imagePath
+  // Metoda pomocnicza do parsowania MessageType
+  static MessageType? _parseMessageType(String? typeString) {
+    if (typeString == 'text') {
+      return MessageType.TEXT;
+    } else if (typeString == 'image') {
+      return MessageType.IMAGE;
     }
-    data['time'] = this.time;
-    return data;
+    return null;
+  }
+
+  // Metoda pomocnicza do parsowania DateTime
+  static DateTime? _parseDateTime(dynamic timeValue) {
+    if (timeValue is int) {
+      return DateTime.fromMillisecondsSinceEpoch(timeValue);
+    } else if (timeValue is String) {
+      return DateTime.parse(timeValue);
+    } else if (timeValue is DateTime) {
+      return timeValue;
+    }
+    return null;
+  }
+
+  // Metoda serializująca do JSON-a
+  Map<String, dynamic> toJson() {
+    return {
+      'content': content,
+      'senderUid': senderUid,
+      'senderUsername': senderUsername,
+      'senderPhotoUrl': senderPhotoUrl,
+      'receiverUid': receiverUid,
+      'receiverPhotoUrl': receiverPhotoUrl,
+      'messageId': messageId,
+      'chatId': chatId,
+      'type': type == MessageType.TEXT ? 'text' : 'image',
+      'time': time?.millisecondsSinceEpoch,
+    };
+  }
+
+  // Statyczna metoda zwracająca strumień wiadomości dla danego chatId
+  static Stream<List<Message>> messageListStream(String chatId) {
+    return ChatService().getMessageStream(chatId);
   }
 }

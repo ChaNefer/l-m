@@ -2,8 +2,8 @@ plugins {
     id "com.android.application"
     id "kotlin-android"
     id "dev.flutter.flutter-gradle-plugin"
-    id "com.google.gms.google-services"
-    id 'com.google.firebase.crashlytics'
+//    id "com.google.gms.google-services"
+//    id 'com.google.firebase.crashlytics'
 
 }
 
@@ -24,6 +24,10 @@ def flutterVersionName = localProperties.getProperty('flutter.versionName')
 if (flutterVersionName == null) {
     flutterVersionName = '1.0'
 }
+
+def keystorePropertiesFile = rootProject.file("keystore.properties")
+def keystoreProperties = new Properties()
+keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
 
 android {
     namespace "studio.aleksandraweber.les_social"
@@ -46,12 +50,21 @@ android {
         versionName flutterVersionName
     }
 
+    signingConfigs {
+        release {
+            keyAlias keystoreProperties['keyAlias']
+            keyPassword keystoreProperties['keyPassword']
+            storeFile file(keystoreProperties['storeFile'])
+            storePassword keystoreProperties['storePassword']
+        }
+    }
+
     buildTypes {
         release {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig signingConfigs.debug
-            resValue "string", "google_app_id", "1:209210387730:android:4ecdb4d4a871ac2799d7cb"
+            signingConfig signingConfigs.release
+//            resValue "string", "google_app_id", "1:209210387730:android:4ecdb4d4a871ac2799d7cb"
         }
     }
 }
@@ -65,4 +78,6 @@ dependencies {
     implementation 'com.google.firebase:firebase-analytics'
     implementation("com.google.firebase:firebase-crashlytics")
     implementation 'com.google.firebase:firebase-messaging:23.4.1'
+    implementation 'com.facebook.android:facebook-android-sdk:latest.release'
+
 }

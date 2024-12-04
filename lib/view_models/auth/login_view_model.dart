@@ -1,9 +1,10 @@
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:les_social/screens/mainscreen.dart';
-import 'package:les_social/services/auth_service.dart';
-import 'package:les_social/utils/validation.dart';
+import 'package:les_social/services/api_service.dart';
+
+import '../../screens/mainscreen.dart';
+import '../../services/auth_service.dart';
+import '../../utils/validation.dart';
 
 class LoginViewModel extends ChangeNotifier {
   final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey<ScaffoldState>();
@@ -13,7 +14,13 @@ class LoginViewModel extends ChangeNotifier {
   String? email, password;
   FocusNode emailFN = FocusNode();
   FocusNode passFN = FocusNode();
-  AuthService auth = AuthService();
+  final ApiService apiService;
+  late AuthService _authService = AuthService();
+
+  LoginViewModel(this.apiService) {
+    //print("Inicjalizacja scaffoldKey z LoginViewModel: $scaffoldKey");
+    //print("Inicjalizacja formKey z LoginViewModel: $formKey");
+  } // Constructor takes ApiService
 
   login(BuildContext context) async {
     FormState form = formKey.currentState!;
@@ -21,25 +28,24 @@ class LoginViewModel extends ChangeNotifier {
     if (!form.validate()) {
       validate = true;
       notifyListeners();
-      showInSnackBar('Popraw błędy, zanim przejdziesz dalej.',context);
+      showInSnackBar('Popraw błędy, zanim przejdziesz dalej.', context);
     } else {
       loading = true;
       notifyListeners();
       try {
-        bool success = await auth.loginUser(
-          email: email,
-          password: password,
+        await _authService.loginUser(
+          email: email!,
+          password: password!,
+          context: context,
         );
-        print(success);
-        if (success) {
-          Navigator.of(context).pushReplacement(
-              CupertinoPageRoute(builder: (_) => TabScreen()));
-        }
+        Navigator.of(context).pushReplacement(
+          CupertinoPageRoute(builder: (_) => TabScreen()),
+        );
       } catch (e) {
         loading = false;
         notifyListeners();
-        print(e);
-        showInSnackBar('${auth.handleFirebaseAuthError(e.toString())}',context);
+        //print(e);
+        showInSnackBar('Wystąpił błąd podczas logowania. Spróbuj ponownie.', context);
       }
       loading = false;
       notifyListeners();
@@ -51,12 +57,11 @@ class LoginViewModel extends ChangeNotifier {
     notifyListeners();
     FormState form = formKey.currentState!;
     form.save();
-    print(Validations.validateEmail(email));
     if (Validations.validateEmail(email) != null) {
-      showInSnackBar('Podaj email, aby zresetować hasło.',context);
+      showInSnackBar('Podaj email, aby zresetować hasło.', context);
     } else {
       try {
-        await auth.forgotPassword(email!);
+        await _authService.forgotPassword(email!);
         showInSnackBar('Sprawdź swój email, aby zresetować hasło', context);
       } catch (e) {
         showInSnackBar('${e.toString()}', context);
@@ -76,8 +81,11 @@ class LoginViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  void showInSnackBar(String value,context) {
+  void showInSnackBar(String value, BuildContext context) {
     ScaffoldMessenger.of(context).removeCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(value)));
   }
 }
+
+
+

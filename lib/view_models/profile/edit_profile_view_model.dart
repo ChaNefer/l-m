@@ -11,18 +11,21 @@ class EditProfileViewModel extends ChangeNotifier {
   GlobalKey<FormState> formKey = GlobalKey<FormState>();
   bool validate = false;
   bool loading = false;
-  UserService userService = UserService();
+  late UserService userService; // Używamy `late`, aby później przypisać wartość
   final picker = ImagePicker();
   UserModel? user;
   String? country;
+  String? city;
   String? username;
   String? bio;
-  String? sex;
-  String? relationship;
-  String? orientation;
   String? age;
   File? image;
   String? imgLink;
+
+  EditProfileViewModel({required this.userService}) {
+    //print("Inicjalizacja scaffoldKey z EditProfileViewModel: $scaffoldKey");
+    //print("Inicjalizacja formKey z EditProfileViewModel: $formKey");
+  }
 
   setUser(UserModel val) {
     user = val;
@@ -34,87 +37,74 @@ class EditProfileViewModel extends ChangeNotifier {
   }
 
   String setCountry(String val) {
-    // print('SetCountry $val');
     country = val;
     notifyListeners();
     return val;
   }
 
   String setBio(String val) {
-    // print('SetBio$val');
     bio = val;
     notifyListeners();
     return val;
   }
 
   String setUsername(String val) {
-    // print('SetUsername$val');
     username = val;
     notifyListeners();
     return val;
   }
 
-  String setSex(String val) {
-    // print('SetUsername$val');
-    sex = val;
-    notifyListeners();
-    return val;
-  }
-
-  String setRelationship(String val) {
-    // print('SetUsername$val');
-    relationship = val;
-    notifyListeners();
-    return val;
-  }
-
   String setAge(String val) {
-    // print('SetUsername$val');
     age = val;
     notifyListeners();
     return val;
   }
 
-  String setOrientation(String val) {
-    // print('SetUsername$val');
-    orientation = val;
+  String setCity(String val) {
+    city = val;
     notifyListeners();
     return val;
   }
 
-
-
-  editProfile(BuildContext context) async {
-    FormState form = formKey.currentState!;
-    form.save();
-    if (!form.validate()) {
-      validate = true;
-      notifyListeners();
-      showInSnackBar(
-          'Please fix the errors in red before submitting.', context);
-    } else {
+  Future<void> editProfile(BuildContext context) async {
+    final form = formKey.currentState!;
+    if (form.validate()) {
+      form.save();
       try {
         loading = true;
         notifyListeners();
+
+        if (userService == null) {
+          //print("Error: UserService is not initialized");
+          loading = false;
+          notifyListeners();
+          return;
+        }
+
         bool success = await userService.updateProfile(
-          //  user: user,
           image: image,
           username: username,
           bio: bio,
           country: country,
+          age: age,
+          city: city,
         );
-        print(success);
+
         if (success) {
           clear();
           Navigator.pop(context);
+        } else {
+          showInSnackBar('Nie udało się zaktualizować profilu.', context);
         }
       } catch (e) {
+        //print('Error po kliknięciu przycisku: $e');
+        showInSnackBar('Wystąpił błąd. Spróbuj ponownie.', context);
+      } finally {
         loading = false;
         notifyListeners();
-        print(e);
       }
-      loading = false;
-      notifyListeners();
+    } else {
+      showInSnackBar('Popraw błędy, zanim przejdziesz dalej.', context);
     }
   }
 
@@ -137,7 +127,7 @@ class EditProfileViewModel extends ChangeNotifier {
           ],
           uiSettings: [
             AndroidUiSettings(
-              toolbarTitle: 'Przytnij zdj',
+              toolbarTitle: 'Przytnij zdjęcie',
               toolbarColor: Constants.lightAccent,
               toolbarWidgetColor: Colors.white,
               initAspectRatio: CropAspectRatioPreset.original,
@@ -157,11 +147,9 @@ class EditProfileViewModel extends ChangeNotifier {
     } catch (e) {
       loading = false;
       notifyListeners();
-      showInSnackBar('Cancelled', context);
+      showInSnackBar('Anulowano', context);
     }
   }
-
-
 
   clear() {
     image = null;
@@ -173,3 +161,6 @@ class EditProfileViewModel extends ChangeNotifier {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(value)));
   }
 }
+
+
+

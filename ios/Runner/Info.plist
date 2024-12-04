@@ -2,33 +2,50 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.209210387730-snjttrgbb80t16059h67bl9csb2mmkgj</string>
+			</array>
+		</dict>
+	</array>
+	<key>FacebookAppID</key>
+	<string>879236273956108</string>
+	<key>FacebookClientToken</key>
+	<string>CLIENT-TOKEN</string>
+	<key>FacebookDisplayName</key>
+	<string>LesMind</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
 	<string>LesMind</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
+	<key>NSMicrophoneUsageDescription</key>
+    <string>Aplikacja potrzebuje dostępu do mikrofonu, aby umożliwić prowadzenie rozmów audio.</string>
+    <key>NSCameraUsageDescription</key>
+    <string>Aplikacja potrzebuje dostępu do kamery, aby umożliwić prowadzenie rozmów wideo.</string>
 	<key>CFBundleIdentifier</key>
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-    <string>sdfghjkjhgfdsdfghj</string>
+	<string>sdfghjkjhgfdsdfghj</string>
 	<key>FirebaseAppDelegateProxyEnabled</key>
-    <false/>
-    <key>UIBackgroundModes</key>
-    <array>
-        <string>fetch</string>
-        <string>remote-notification</string>
-    </array>
+	<false/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>remote-notification</string>
+	</array>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-    <string>This app requires access to your photo library to upload photos.</string>
+	<string>Aplikacja potrzebuje dostępu do galerii zdjęć, aby można było wybierać i przesyłać zdjęcia.</string>
 	<key>CFBundleName</key>
 	<string>LesMind</string>
 	<key>NSCameraUsageDescription</key>
-    <string>Aplikacja potrzebuje dostępu do kamery, aby można było zrobić zdjęcia i przesłać je do serwera.</string>
-    <key>NSPhotoLibraryUsageDescription</key>
-    <string>Aplikacja potrzebuje dostępu do galerii zdjęć, aby można było wybierać i przesyłać zdjęcia.</string>
+	<string>Aplikacja potrzebuje dostępu do kamery, aby można było zrobić zdjęcia i przesłać je do serwera.</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>

@@ -1,14 +1,13 @@
 import 'dart:io';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:loading_overlay/loading_overlay.dart';
-import 'package:provider/provider.dart';
-import 'package:les_social/models/enum/message_type.dart';
 import 'package:les_social/models/status.dart';
-import 'package:les_social/utils/firebase.dart';
+import 'package:les_social/services/api_service.dart';
 import 'package:les_social/view_models/status/status_view_model.dart';
-import 'package:les_social/widgets/indicators.dart';
+import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
+
+import '../../services/auth_service.dart';
 
 class ConfirmStatus extends StatefulWidget {
   @override
@@ -16,20 +15,22 @@ class ConfirmStatus extends StatefulWidget {
 }
 
 class _ConfirmStatusState extends State<ConfirmStatus> {
+  late ApiService apiService;
+  late AuthService _authService = AuthService();
+
+  currentUserId() {
+    return _authService.getCurrentUser;
+  }
   bool loading = false;
 
   @override
   Widget build(BuildContext context) {
     StatusViewModel viewModel = Provider.of<StatusViewModel>(context);
     return Scaffold(
-      body: LoadingOverlay(
-        isLoading: loading,
-        progressIndicator: circularProgress(context),
-        child: Center(
-          child: AspectRatio(
-            aspectRatio: 9 / 16,
-            child: Image.file(viewModel.mediaUrl!),
-          ),
+      body: Center(
+        child: AspectRatio(
+          aspectRatio: 9 / 16,
+          child: Image.file(viewModel.mediaUrl!),
         ),
       ),
       bottomNavigationBar: BottomAppBar(
@@ -40,15 +41,15 @@ class _ConfirmStatusState extends State<ConfirmStatus> {
             child: TextFormField(
               style: TextStyle(
                 fontSize: 15.0,
-                color: Theme.of(context).textTheme.headline6!.color,
+                color: Theme.of(context).textTheme.bodyLarge!.color,
               ),
               decoration: InputDecoration(
                 contentPadding: EdgeInsets.all(10.0),
                 enabledBorder: InputBorder.none,
                 border: InputBorder.none,
-                hintText: "Type your caption",
+                hintText: "Wpisz podpis",
                 hintStyle: TextStyle(
-                  color: Theme.of(context).textTheme.headline6!.color,
+                  color: Theme.of(context).textTheme.bodyLarge!.color,
                 ),
               ),
               onSaved: (val) {
@@ -71,55 +72,45 @@ class _ConfirmStatusState extends State<ConfirmStatus> {
           setState(() {
             loading = true;
           });
-          //check if a user has uploaded a status
-          QuerySnapshot snapshot = await statusRef
-              .where('userId', isEqualTo: firebaseAuth.currentUser!.uid)
-              .get();
-          if (snapshot.docs.isNotEmpty) {
-            List chatList = snapshot.docs;
-            DocumentSnapshot chatListSnapshot = chatList[0];
-            String url = await uploadMedia(viewModel.mediaUrl!);
+
+          try {
+            // Upload media to backend (assuming it returns the uploaded content URL)
+            String mediaUrl = await uploadMediaToBackend(viewModel.mediaUrl!);
+
+            // Create StatusModel object
             StatusModel message = StatusModel(
-              url: url,
+              url: mediaUrl,
               caption: viewModel.description,
-              type: MessageType.IMAGE,
-              time: Timestamp.now(),
-              statusId: uuid.v1(),
+              time: DateTime.now(),
+              statusId: Uuid().v1(),
               viewers: [],
             );
-            await viewModel.sendStatus(chatListSnapshot.id, message);
+
+            // Call sendStatus with appropriate parameters
+            viewModel.sendStatus('your_chat_id', message); // Replace 'your_chat_id' with actual chat ID
+
             setState(() {
               loading = false;
             });
+
             Navigator.pop(context);
-          } else {
-            String url = await uploadMedia(viewModel.mediaUrl!);
-            StatusModel message = StatusModel(
-              url: url,
-              caption: viewModel.description,
-              type: MessageType.IMAGE,
-              time: Timestamp.now(),
-              statusId: uuid.v1(),
-              viewers: [],
-            );
-            String id = await viewModel.sendFirstStatus(message);
-            await viewModel.sendStatus(id, message);
+          } catch (e) {
             setState(() {
               loading = false;
             });
-            Navigator.pop(context);
+            //print('Error sending status: $e');
+            // Handle errors here
           }
         },
       ),
     );
   }
 
-  Future<String> uploadMedia(File image) async {
-    Reference storageReference =
-        storage.ref().child("status").child(uuid.v1()).child(uuid.v4());
-    UploadTask uploadTask = storageReference.putFile(image);
-    await uploadTask.whenComplete(() => null);
-    String imageUrl = await storageReference.getDownloadURL();
-    return imageUrl;
+  Future<String> uploadMediaToBackend(File image) async {
+    // Implement logic to upload image to your backend
+    // Return URL of the uploaded content
+    // Example:
+    String mediaUrl = 'https://your-backend.com/upload/image';
+    return mediaUrl;
   }
 }

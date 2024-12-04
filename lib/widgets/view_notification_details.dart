@@ -39,7 +39,7 @@ class _ViewActivityDetailsState extends State<ViewActivityDetails> {
                     context,
                     CupertinoPageRoute(
                       builder: (_) =>
-                          Profile(profileId: widget.activity!.userId),
+                          Profile(profileId: widget.activity!.userId!),
                     ));
               },
               child: CircleAvatar(
@@ -56,7 +56,7 @@ class _ViewActivityDetailsState extends State<ViewActivityDetails> {
                 Icon(Ionicons.alarm_outline, size: 13.0),
                 SizedBox(width: 3.0),
                 Text(
-                  timeago.format(widget.activity!.timestamp!.toDate()),
+                  timeago.format(widget.activity!.time!),
                 ),
               ],
             ),

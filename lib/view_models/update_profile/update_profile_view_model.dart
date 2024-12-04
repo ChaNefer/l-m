@@ -55,7 +55,7 @@
 //   }
 //
 //   void initFields() {
-//     print('Initializing fields');
+//     //print('Initializing fields');
 //     if (orientation == null) {
 //       orientation = moreAboutModel.orientation ?? '';
 //     }
@@ -135,25 +135,25 @@
 //   }
 //
 //   void setOrientation(String val) {
-//     print('Orientation set to: $val');
+//     //print('Orientation set to: $val');
 //     orientation = val;
 //     notifyListeners();
 //   }
 //
 //   void setSex(String val) {
-//     print('Sex set to: $val');
+//     //print('Sex set to: $val');
 //     sex = val;
 //     notifyListeners();
 //   }
 //
 //   void setRelationship(String val) {
-//     print('Relation set to: $val');
+//     //print('Relation set to: $val');
 //     relationship = val;
 //     notifyListeners();
 //   }
 //
 //   void setAge(String val) {
-//     print('Age value received: $val');
+//     //print('Age value received: $val');
 //     age = val;
 //     notifyListeners();
 //   }

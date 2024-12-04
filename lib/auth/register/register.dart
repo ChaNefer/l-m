@@ -1,13 +1,18 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:ionicons/ionicons.dart';
+import 'package:les_social/services/api_service.dart';
 import 'package:loading_overlay/loading_overlay.dart';
 import 'package:provider/provider.dart';
+import 'package:http/http.dart' as http; // Import the http library
 import 'package:les_social/components/password_text_field.dart';
 import 'package:les_social/components/text_form_builder.dart';
 import 'package:les_social/utils/validation.dart';
 import 'package:les_social/view_models/auth/register_view_model.dart';
 import 'package:les_social/widgets/indicators.dart';
+
+import '../../services/auth_service.dart';
 
 class Register extends StatefulWidget {
   @override
@@ -15,6 +20,17 @@ class Register extends StatefulWidget {
 }
 
 class _RegisterState extends State<Register> {
+  // Method to send registration data to your PHP backend
+  late ApiService apiService;
+  AuthService auth = AuthService();
+
+
+  @override
+  void initState() {
+    super.initState();
+    apiService = ApiService(context);
+  }
+
   @override
   Widget build(BuildContext context) {
     RegisterViewModel viewModel = Provider.of<RegisterViewModel>(context);
@@ -48,9 +64,7 @@ class _RegisterState extends State<Register> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    'Jesteś już z nami?  ',
-                  ),
+                  Text('Jesteś już z nami?  '),
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
                     child: Text(
@@ -70,7 +84,7 @@ class _RegisterState extends State<Register> {
     );
   }
 
-  buildForm(RegisterViewModel viewModel, BuildContext context) {
+  Widget buildForm(RegisterViewModel viewModel, BuildContext context) {
     return Form(
       key: viewModel.formKey,
       autovalidateMode: AutovalidateMode.onUserInteraction,
@@ -112,6 +126,19 @@ class _RegisterState extends State<Register> {
               viewModel.setCountry(val);
             },
             focusNode: viewModel.countryFN,
+            nextFocusNode: viewModel.cityFN,
+          ),
+          SizedBox(height: 20.0),
+          TextFormBuilder(
+            enabled: !viewModel.loading,
+            prefix: Ionicons.locate_outline,
+            hintText: "Miasto",
+            textInputAction: TextInputAction.next,
+            validateFunction: Validations.validateName,
+            onSaved: (String val) {
+              viewModel.setCity(val);
+            },
+            focusNode: viewModel.cityFN,
             nextFocusNode: viewModel.passFN,
           ),
           SizedBox(height: 20.0),
@@ -136,12 +163,39 @@ class _RegisterState extends State<Register> {
             hintText: "Powtórz hasło ",
             textInputAction: TextInputAction.done,
             validateFunction: Validations.validatePassword,
-            submitAction: () => viewModel.register(context),
             obscureText: true,
             onSaved: (String val) {
               viewModel.setConfirmPass(val);
             },
             focusNode: viewModel.cPassFN,
+            nextFocusNode: viewModel.ageFN,
+          ),
+          SizedBox(height: 20.0),
+          TextFormBuilder(
+            enabled: !viewModel.loading,
+            prefix: Ionicons.calendar,
+            hintText: "Wiek",
+            textInputAction: TextInputAction.done,
+            validateFunction: Validations.validateAge,
+            submitAction: () => viewModel.register(context),
+            onSaved: (String val) {
+              viewModel.setAge(val);
+            },
+            focusNode: viewModel.ageFN,
+          ),
+          SizedBox(height: 25.0),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Ionicons.lock_closed_outline),
+              SizedBox(width: 10),
+              Text(
+                "Musisz mieć 18 lat lub więcej, aby się zarejestrować",
+                style: TextStyle(
+                  fontSize: 12,
+                ),
+              ),
+            ],
           ),
           SizedBox(height: 25.0),
           Container(
@@ -149,16 +203,16 @@ class _RegisterState extends State<Register> {
             width: 180.0,
             child: ElevatedButton(
               style: ButtonStyle(
-                shape: MaterialStateProperty.all<RoundedRectangleBorder>(
+                shape: WidgetStateProperty.all<RoundedRectangleBorder>(
                   RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(40.0),
                   ),
                 ),
-                backgroundColor: MaterialStateProperty.all<Color>(
+                backgroundColor: WidgetStateProperty.all<Color>(
                     Theme.of(context).colorScheme.secondary),
               ),
               child: Text(
-                'zarejestruj się'.toUpperCase(),
+                'Zarejestruj się'.toUpperCase(),
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 12.0,

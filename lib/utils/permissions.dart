@@ -26,7 +26,7 @@ class Permissions {
           await [Permission.camera].request();
       return statuses[Permission.camera] ?? PermissionStatus.limited;
     } else {
-      print('CAMERA STATUS $status');
+      //print('CAMERA STATUS $status');
       return status;
     }
   }
@@ -38,7 +38,7 @@ class Permissions {
           await [Permission.microphone].request();
       return statuses[Permission.microphone] ?? PermissionStatus.limited;
     } else {
-      print('MICROPHONE STATUS $status');
+      //print('MICROPHONE STATUS $status');
       return status;
     }
   }
@@ -50,7 +50,7 @@ class Permissions {
           await [Permission.storage].request();
       return statuses[Permission.storage] ?? PermissionStatus.limited;
     } else {
-      print('STORAGE STATUS $status');
+      //print('STORAGE STATUS $status');
       return status;
     }
   }
