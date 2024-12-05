@@ -1,94 +1,3 @@
-// import 'package:flutter/material.dart';
-//
-// class CallScreen extends StatefulWidget {
-//   final String targetUserId;
-//   final bool isVideoCall;
-//
-//   const CallScreen({
-//     required this.targetUserId,
-//     required this.isVideoCall,
-//   });
-//
-//   @override
-//   _CallScreenState createState() => _CallScreenState();
-// }
-//
-// class _CallScreenState extends State<CallScreen> {
-//   bool isCallAccepted = false;
-//
-//   // Funkcja odbierania połączenia
-//   void acceptCall() {
-//     setState(() {
-//       isCallAccepted = true;
-//     });
-//
-//     // Tutaj możesz dodać logikę, która rozpoczyna rozmowę
-//     // np. nawiązywanie połączenia WebRTC
-//     print('Call accepted');
-//   }
-//
-//   // Funkcja odrzucania połączenia
-//   void rejectCall() {
-//     setState(() {
-//       isCallAccepted = false;
-//     });
-//
-//     // Dodać logikę, która kończy połączenie
-//     print('Call rejected');
-//   }
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       appBar: AppBar(
-//         title: Text(widget.isVideoCall ? 'Wideorozmowa' : 'Połączenie audio'),
-//       ),
-//       body: Center(
-//         child: isCallAccepted
-//             ? Column(
-//           mainAxisAlignment: MainAxisAlignment.center,
-//           children: [
-//             Text(
-//               'Rozmowa z użytkownikiem ${widget.targetUserId}',
-//               style: TextStyle(fontSize: 18),
-//             ),
-//             // Możesz dodać podgląd kamery/video w tym miejscu, jeśli to połączenie wideo
-//           ],
-//         )
-//             : Column(
-//           mainAxisAlignment: MainAxisAlignment.center,
-//           children: [
-//             Text(
-//               'Połączenie przychodzące od użytkownika ${widget.targetUserId}',
-//               style: TextStyle(fontSize: 18),
-//             ),
-//             SizedBox(height: 20),
-//             Row(
-//               mainAxisAlignment: MainAxisAlignment.center,
-//               children: [
-//                 IconButton(
-//                   icon: Icon(Icons.call, color: Colors.green),
-//                   onPressed: acceptCall,
-//                   iconSize: 50,
-//                 ),
-//                 IconButton(
-//                   icon: Icon(Icons.call_end, color: Colors.red),
-//                   onPressed: rejectCall,
-//                   iconSize: 50,
-//                 ),
-//               ],
-//             ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }
-//
-//
-//
-
-
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 
@@ -113,13 +22,14 @@ class _CallScreenState extends State<CallScreen> {
   RTCVideoRenderer _remoteRenderer = RTCVideoRenderer();
 
   bool isCallAccepted = false;
+  String? remoteSdp; // zmienna do przechowywania zdalnego SDP
 
   @override
   void initState() {
     super.initState();
     _initializeRenderers();
+    isCallInitiator = true; // Pierwsze połączenie inicjuje rozmowę
     _createConnection();
-    isCallInitiator = false;
   }
 
   @override
@@ -136,53 +46,61 @@ class _CallScreenState extends State<CallScreen> {
     await _remoteRenderer.initialize();
   }
 
+  // Tworzymy połączenie audio lub wideo
   Future<void> _createConnection() async {
-    // Tworzenie lokalnego strumienia
+    // Tworzymy lokalny strumień tylko audio lub audio + wideo
     _localStream = await navigator.mediaDevices.getUserMedia({
       'audio': true,
-      'video': widget.isVideoCall,
+      'video': widget.isVideoCall,  // Jeśli jest połączenie wideo, dodajemy strumień wideo
     });
 
     // Wyświetlanie lokalnego strumienia
-    _localRenderer.srcObject = _localStream;
+    if (widget.isVideoCall) {
+      _localRenderer.srcObject = _localStream;
+    }
 
-    // Tworzenie połączenia
+    // Tworzymy połączenie PeerConnection
     _peerConnection = await createPeerConnection({
       'iceServers': [
         {'urls': 'stun:stun.l.google.com:19302'}, // STUN server
       ]
     });
 
-    // Dodanie lokalnego strumienia do połączenia
-    _peerConnection.addStream(_localStream);
+    // Dodanie lokalnych tracków (audio/wideo) do połączenia
+    _localStream.getTracks().forEach((track) {
+      _peerConnection.addTrack(track, _localStream);
+    });
 
     // Obsługa zdalnego strumienia
-    _peerConnection.onAddStream = (MediaStream stream) {
+    _peerConnection.onAddTrack = (MediaStream stream, MediaStreamTrack track) {
       setState(() {
-        _remoteRenderer.srcObject = stream;
+        if (widget.isVideoCall) {
+          _remoteRenderer.srcObject = stream; // strumień zdalny zawierający audio/wideo
+        }
       });
     };
 
     // Obsługa ICE candidates
     _peerConnection.onIceCandidate = (RTCIceCandidate candidate) {
       print('ICE Candidate: $candidate');
-      // Wyślij kandydata ICE do serwera sygnalizacyjnego
+      _sendIceCandidateToServer(candidate);
     };
 
-    // Inicjalizacja SDP
+    // Tworzymy ofertę SDP (tylko dla inicjatora połączenia)
     if (isCallInitiator) {
       RTCSessionDescription offer = await _peerConnection.createOffer();
       await _peerConnection.setLocalDescription(offer);
-
-      // Wyślij ofertę SDP do serwera sygnalizacyjnego
-      print('Offer SDP: ${offer.sdp}');
+      _sendSdpToServer(offer.sdp!); // Wyślij ofertę SDP do serwera
     }
   }
 
-  // Obsługa odbioru SDP (np. odpowiedź)
+  // Obsługa odbioru odpowiedzi SDP
   Future<void> handleAnswer(String answer) async {
     RTCSessionDescription description = RTCSessionDescription(answer, 'answer');
     await _peerConnection.setRemoteDescription(description);
+    setState(() {
+      remoteSdp = answer; // Ustawienie remoteSdp
+    });
   }
 
   // Obsługa odbioru ICE Candidate
@@ -197,11 +115,16 @@ class _CallScreenState extends State<CallScreen> {
 
   // Funkcja odbierania połączenia
   void acceptCall() {
-    setState(() {
-      isCallAccepted = true;
-    });
+    if (remoteSdp != null) {
+      setState(() {
+        isCallAccepted = true;
+      });
 
-    print('Call accepted');
+      print('Call accepted');
+      _sendSdpToServer(remoteSdp!); // Wysyłamy SDP odpowiedzi do serwera
+    } else {
+      print("remoteSdp is null!");
+    }
   }
 
   // Funkcja odrzucania połączenia
@@ -211,6 +134,19 @@ class _CallScreenState extends State<CallScreen> {
     });
 
     print('Call rejected');
+    // Wyślij informację o odrzuceniu połączenia do serwera
+  }
+
+  // Funkcja wysyłania SDP do serwera
+  void _sendSdpToServer(String sdp) {
+    // Wyślij SDP do serwera sygnalizacyjnego
+    print('Sending SDP to server: $sdp');
+  }
+
+  // Funkcja wysyłania ICE Candidate do serwera
+  void _sendIceCandidateToServer(RTCIceCandidate candidate) {
+    // Wyślij ICE Candidate do serwera sygnalizacyjnego
+    print('Sending ICE Candidate to server: ${candidate.candidate}');
   }
 
   @override
@@ -222,12 +158,22 @@ class _CallScreenState extends State<CallScreen> {
       body: isCallAccepted
           ? Column(
         children: [
-          Expanded(
-            child: RTCVideoView(_localRenderer),
-          ),
-          Expanded(
-            child: RTCVideoView(_remoteRenderer),
-          ),
+          if (widget.isVideoCall) ...[
+            // Renderowanie wideo, jeśli połączenie wideo
+            Expanded(
+              child: RTCVideoView(_localRenderer),
+            ),
+            Expanded(
+              child: RTCVideoView(_remoteRenderer),
+            ),
+          ] else ...[
+            // Renderowanie tylko audio
+            Expanded(
+              child: Center(
+                child: Icon(Icons.headset, size: 100, color: Colors.green),
+              ),
+            ),
+          ]
         ],
       )
           : Center(
@@ -260,6 +206,5 @@ class _CallScreenState extends State<CallScreen> {
     );
   }
 }
-
 
 

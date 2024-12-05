@@ -4,9 +4,11 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:http/http.dart' as http;
 import 'package:ionicons/ionicons.dart';
+import 'package:les_social/pages/call_notification_screen.dart';
 import 'package:les_social/services/auth_service.dart';
 import 'package:les_social/services/call_service.dart';
 import 'package:les_social/services/chat_service.dart';
+import 'package:les_social/services/websocket_service.dart';
 import 'package:provider/provider.dart';
 import '../models/chat.dart';
 import '../models/enum/message_type.dart';
@@ -41,6 +43,7 @@ class _ConversationState extends State<Conversation> {
   late CallService callService;
   bool _isExpanded = false;
   final int maxCharacterLimit = 100;
+  final WebSocketService webSocketService = WebSocketService();
 
   @override
   void initState() {
@@ -106,7 +109,7 @@ class _ConversationState extends State<Conversation> {
                           print('Audio call initiated: $callData');
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (context) => CallScreen(targetUserId: widget.receiver_id!, isVideoCall: false,)),
+                            MaterialPageRoute(builder: (context) => CallNotificationScreen(webSocketService: webSocketService)),
                           );
 
                         } catch (e) {
@@ -122,7 +125,7 @@ class _ConversationState extends State<Conversation> {
                           print('Video call initiated: $callData');
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (context) => CallScreen(targetUserId: 'receiver_id', isVideoCall: true,)),
+                            MaterialPageRoute(builder: (context) => CallNotificationScreen(webSocketService: webSocketService,)),
                           );
                         } catch (e) {
                           print('Error initiating video call: $e');
@@ -448,6 +451,7 @@ class _ConversationState extends State<Conversation> {
 
         // Sprawdzamy, czy wiadomość jest wysłana przez zalogowanego użytkownika
         final isSentByMe = senderId == currentUserId;
+        final receiver = widget.receiver_id;
 
         // Zmieniamy photoUrl w zależności od tego, kto wysłał wiadomość
         final photoUrl = message['sender_photo_url'] ?? 'https://example.com/default_avatar.jpg';
@@ -457,7 +461,7 @@ class _ConversationState extends State<Conversation> {
 
         // Dodajemy Future, aby pobrać status użytkownika
         return FutureBuilder<Map<String, dynamic>>(
-          future: fetchUserStatus(senderId), // Funkcja do pobrania statusu użytkownika
+          future: fetchUserStatus(receiver!), // Funkcja do pobrania statusu użytkownika
           builder: (context, statusSnapshot) {
             String statusText = 'Ładowanie statusu...';
             if (statusSnapshot.connectionState == ConnectionState.done &&
@@ -543,7 +547,6 @@ class _ConversationState extends State<Conversation> {
     );
   }
 
-
   Future<Map<String, dynamic>> fetchUserStatus(String userId) async {
     final url = 'https://lesmind.com/api/users/get_user_status.php'; // Endpoint do pobrania statusu użytkownika
     final response = await http.post(
@@ -558,11 +561,6 @@ class _ConversationState extends State<Conversation> {
       throw Exception('Nie udało się pobrać statusu użytkownika');
     }
   }
-
-
-
-
-
 
   Future<List<Map<String, dynamic>>> fetchMessages(String chatId) async {
     final response = await http.post(

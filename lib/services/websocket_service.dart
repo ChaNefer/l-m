@@ -1,154 +1,118 @@
-// import 'dart:convert';
-// import 'dart:io';
-//
-// class WebSocketService {
-//   late WebSocket _webSocket;
-//
-//   // Połączenie z serwerem WebSocket
-//   void connect() async {
-//     _webSocket = await WebSocket.connect('ws://lesmind.com:8080');
-//     _webSocket.listen((data) {
-//       _onMessageReceived(data);
-//     });
-//   }
-//
-//   // Odbiór wiadomości
-//   void _onMessageReceived(String message) {
-//     var decodedMessage = jsonDecode(message);
-//     if (decodedMessage['type'] == 'call') {
-//       String callerId = decodedMessage['callerId'];
-//       String callType = decodedMessage['callType'];
-//
-//       // Wyświetlanie powiadomienia o połączeniu przychodzącym
-//       showIncomingCallNotification(callerId, callType);
-//     }
-//   }
-//
-//   // Funkcja do wyświetlenia powiadomienia o połączeniu
-//   void showIncomingCallNotification(String callerId, String callType) {
-//     // Możesz dodać tutaj logikę do pokazania powiadomienia
-//     print('Połączenie przychodzące od $callerId ($callType)');
-//   }
-// }
-//
-//
-//
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
 class WebSocketService {
-  late WebSocket _webSocket;
+  WebSocket? _webSocket;
+  final _streamController = StreamController<dynamic>.broadcast();
+  String? _currentUserId;
 
-  // Funkcja do inicjalizacji WebSocket
+  Stream<dynamic> get messageStream => _streamController.stream;
+
   Future<void> connect(String userId) async {
-    _webSocket = await WebSocket.connect('ws://lesmind.com:8080');
-    _webSocket.listen((data) {
-      _onMessageReceived(data);
-    });
+    try {
+      _currentUserId = userId;
+      _webSocket = await WebSocket.connect('wss://lesmind.com/api/calls/web_socket_server.php')
+          .timeout(Duration(seconds: 10));
 
-    // Wyślij wiadomość rejestracji
-    _sendMessage({
-      'type': 'register',
-      'userId': userId,
-    });
-  }
+      _webSocket?.listen(
+            (data) {
+          try {
+            final parsedData = json.decode(data);
+            _streamController.add(parsedData);
+            _processMessage(parsedData);
+          } catch (e) {
+            print('Error parsing WebSocket message: $e');
+          }
+        },
+        onDone: () {
+          print('WebSocket connection closed');
+          _reconnect();
+        },
+        onError: (error) {
+          print('WebSocket error: $error');
+          _reconnect();
+        },
+      );
 
-  // Funkcja do obsługi odebranych wiadomości
-  void _onMessageReceived(String message) {
-    var decodedMessage = jsonDecode(message);
-    switch (decodedMessage['type']) {
-      case 'call':
-        showIncomingCallNotification(
-          decodedMessage['callerId'],
-          decodedMessage['callType'],
-        );
-        break;
-
-      case 'offer':
-      // Obsługa oferty SDP
-        handleOffer(decodedMessage);
-        break;
-
-      case 'answer':
-      // Obsługa odpowiedzi SDP
-        handleAnswer(decodedMessage);
-        break;
-
-      case 'ice-candidate':
-      // Obsługa kandydata ICE
-        handleIceCandidate(decodedMessage);
-        break;
-
-      default:
-        print('Nieznany typ wiadomości: ${decodedMessage['type']}');
+      _sendRegistration();
+    } on TimeoutException {
+      print('Connection timeout');
+      _reconnect();
+    } catch (e) {
+      print('WebSocket connection error: $e');
+      _reconnect();
     }
   }
 
-  // Wysyłanie wiadomości do serwera WebSocket
-  void _sendMessage(Map<String, dynamic> message) {
-    _webSocket.add(jsonEncode(message));
+  void _sendRegistration() {
+    if (_currentUserId != null) {
+      sendMessage({
+        'type': 'register',
+        'userId': _currentUserId,
+      });
+    }
   }
 
-  // Wyświetlanie powiadomienia o połączeniu przychodzącym
-  void showIncomingCallNotification(String callerId, String callType) {
-    print('Połączenie przychodzące od $callerId ($callType)');
-    // Możesz tutaj dodać kod do pokazania UI z informacją o połączeniu
+  void _processMessage(Map<String, dynamic> message) {
+    switch (message['type']) {
+      case 'call':
+        _handleIncomingCall(message);
+        break;
+      case 'offer':
+        _handleOffer(message);
+        break;
+      case 'answer':
+        _handleAnswer(message);
+        break;
+      case 'ice-candidate':
+        _handleIceCandidate(message);
+        break;
+    }
   }
 
-  // Wysyłanie oferty SDP
-  void sendOffer(String targetUserId, String sdp) {
-    _sendMessage({
-      'type': 'offer',
-      'targetUserId': targetUserId,
-      'sdp': sdp,
+  void _handleIncomingCall(Map<String, dynamic> message) {
+    // Logika obsługi połączenia przychodzącego
+    print('Incoming call from: ${message['callerId']}');
+  }
+
+  void _handleOffer(Map<String, dynamic> offer) {
+    // Logika obsługi oferty WebRTC
+    print('Received WebRTC offer');
+  }
+
+  void _handleAnswer(Map<String, dynamic> answer) {
+    // Logika obsługi odpowiedzi WebRTC
+    print('Received WebRTC answer');
+  }
+
+  void _handleIceCandidate(Map<String, dynamic> candidate) {
+    // Logika obsługi kandydatów ICE
+    print('Received ICE candidate');
+  }
+
+  void sendMessage(Map<String, dynamic> message) {
+    try {
+      if (_webSocket != null && _webSocket!.readyState == WebSocket.open) {
+        _webSocket!.add(json.encode(message));
+      } else {
+        print('WebSocket not connected');
+      }
+    } catch (e) {
+      print('Error sending message: $e');
+    }
+  }
+
+  void _reconnect() {
+    Future.delayed(Duration(seconds: 5), () {
+      if (_currentUserId != null) {
+        connect(_currentUserId!);
+      }
     });
   }
 
-  // Wysyłanie odpowiedzi SDP
-  void sendAnswer(String targetUserId, String sdp) {
-    _sendMessage({
-      'type': 'answer',
-      'targetUserId': targetUserId,
-      'sdp': sdp,
-    });
-  }
-
-  // Wysyłanie kandydata ICE
-  void sendIceCandidate(String targetUserId, Map<String, dynamic> candidate) {
-    _sendMessage({
-      'type': 'ice-candidate',
-      'targetUserId': targetUserId,
-      'candidate': candidate,
-    });
-  }
-
-  // Obsługa oferty SDP
-  void handleOffer(Map<String, dynamic> offer) {
-    String sdp = offer['sdp'];
-    String callerId = offer['from'];
-
-    print('Otrzymano ofertę SDP od $callerId');
-    // Tutaj dodasz kod do ustawienia SDP w WebRTC
-  }
-
-  // Obsługa odpowiedzi SDP
-  void handleAnswer(Map<String, dynamic> answer) {
-    String sdp = answer['sdp'];
-    String responderId = answer['from'];
-
-    print('Otrzymano odpowiedź SDP od $responderId');
-    // Tutaj dodasz kod do ustawienia SDP w WebRTC
-  }
-
-  // Obsługa kandydata ICE
-  void handleIceCandidate(Map<String, dynamic> candidateMessage) {
-    Map<String, dynamic> candidate = candidateMessage['candidate'];
-    String userId = candidateMessage['from'];
-
-    print('Otrzymano kandydata ICE od $userId');
-    // Dodaj kandydata ICE do WebRTC
+  void close() {
+    _webSocket?.close();
+    _streamController.close();
   }
 }
-
-
-
