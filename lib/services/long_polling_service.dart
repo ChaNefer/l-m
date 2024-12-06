@@ -37,12 +37,9 @@ class LongPollingService {
     // Zrób coś z odpowiedzią
   }
 
-
   Future<void> startVoiceCall(
-      String callerId,
-      String receiverId,
-      String callerUsername,
-      String callerPhotoUrl) async {
+      String callerId, String receiverId, String callerUsername, String callerPhotoUrl
+      ) async {
     final callData = {
       'caller_id': callerId,
       'receiver_id': receiverId,
@@ -63,9 +60,9 @@ class LongPollingService {
       final response = await http.post(
         Uri.parse('https://lesmind.com/api/calls/voice_call.php'), // Adres do voice_call.php
         headers: {
-          'Content-Type': 'application/json', // Nagłówek wskazujący, że wysyłamy JSON
+          'Content-Type': 'application/x-www-form-urlencoded', // Nagłówek wskazujący, że wysyłamy JSON
         },
-        body: json.encode(callData), // Konwertujemy dane na JSON
+        body: callData, // Konwertujemy dane na JSON
       );
 
       if (response.statusCode == 200) {

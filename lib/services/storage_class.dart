@@ -1,4 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class StorageClass {
   Future<void> saveUserId(String userId) async {
@@ -125,4 +127,42 @@ class StorageClass {
       return null;
     }
   }
+
+  void saveOneSignalToken(String token) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    prefs.setString('onesignal_token', token);
+
+    // Jeśli chcesz wysłać token do backendu
+    sendTokenToBackend(token);
+  }
+
+  Future<void> sendTokenToBackend(String token) async {
+    String? userId = await StorageClass().getUserId(); // Sprawdzenie userId
+    if (userId == null) {
+      print('Nie znaleziono userId!');
+      return;
+    }
+
+    try {
+      final response = await http.post(
+        Uri.parse('https://lesmind.com/api/call/save_onesignal_token.php'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: json.encode({
+          'userId': userId,  // Użycie userId
+          'onesignal_token': token,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        print('Token zapisany w backendzie');
+      } else {
+        print('Błąd podczas zapisywania tokenu w backendzie');
+      }
+    } catch (e) {
+      print('Błąd: $e');
+    }
+  }
+
 }

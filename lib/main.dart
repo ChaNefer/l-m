@@ -1,4 +1,4 @@
-import 'dart:convert';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -10,7 +10,6 @@ import 'package:les_social/services/user_service.dart';
 import 'package:les_social/utils/constants.dart';
 import 'package:les_social/utils/providers.dart';
 import 'package:les_social/view_models/theme/theme_view_model.dart';
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
@@ -19,8 +18,11 @@ FlutterLocalNotificationsPlugin();
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Inicjalizacja OneSignal
-  await initializeOneSignal();
+  // await initializeOneSignal();
+
+  OneSignal.Debug.setLogLevel(OSLogLevel.verbose);
+  OneSignal.initialize('2db43de7-52bb-45fc-8d06-12b7c07093c5');
+  OneSignal.Notifications.requestPermission(true);
 
   runApp(
     MultiProvider(
@@ -30,25 +32,25 @@ void main() async {
   );
 }
 
-Future<void> initializeOneSignal() async {
-  // Initialize OneSignal without await
-  OneSignal.initialize('2db43de7-52bb-45fc-8d06-12b7c07093c5');
-
-  // Configure notification permissions
-  await OneSignal.Notifications.requestPermission(true);
-
-  // Notification received handler
-  OneSignal.Notifications.addForegroundWillDisplayListener((event) {
-    print("Powiadomienie w tle: ${event.notification.notificationId}");
-    event.preventDefault();
-    event.notification;
-  });
-
-  // Notification opened handler
-  OneSignal.Notifications.addClickListener((event) {
-    print("Powiadomienie otwarte: ${event.notification.notificationId}");
-  });
-}
+// Future<void> initializeOneSignal() async {
+//   // Initialize OneSignal without await
+//   OneSignal.initialize('2db43de7-52bb-45fc-8d06-12b7c07093c5');
+//
+//   // Configure notification permissions
+//   await OneSignal.Notifications.requestPermission(true);
+//
+//   // Notification received handler
+//   OneSignal.Notifications.addForegroundWillDisplayListener((event) {
+//     print("Powiadomienie w tle: ${event.notification.notificationId}");
+//     event.preventDefault();
+//     event.notification;
+//   });
+//
+//   // Notification opened handler
+//   OneSignal.Notifications.addClickListener((event) {
+//     print("Powiadomienie otwarte: ${event.notification.notificationId}");
+//   });
+// }
 
 class MyApp extends StatefulWidget {
   @override
