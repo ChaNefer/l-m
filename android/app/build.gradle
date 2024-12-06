@@ -79,5 +79,6 @@ dependencies {
     implementation("com.google.firebase:firebase-crashlytics")
     implementation 'com.google.firebase:firebase-messaging:23.4.1'
     implementation 'com.facebook.android:facebook-android-sdk:latest.release'
+    implementation 'com.onesignal:OneSignal:[4.0.0, 4.99.99]'
 
 }

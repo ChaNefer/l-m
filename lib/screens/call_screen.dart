@@ -1,14 +1,35 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
+import 'package:les_social/services/auth_service.dart';
+
+import '../models/user.dart';
 
 class CallScreen extends StatefulWidget {
   final String targetUserId;
   final bool isVideoCall;
+  late final AuthService _authService = AuthService();
 
-  const CallScreen({
+  final String? receiver_id;
+
+
+   CallScreen({
     required this.targetUserId,
     required this.isVideoCall,
+    this.receiver_id
   });
+
+  Future<UserModel?> currentUserId() async {
+    try {
+      var currentUser = await _authService.getCurrentUser();
+      print(
+          "currentUserId: Pobrano ID aktualnie zalogowanego użytkownika - ${currentUser?.id}"); // Debugowanie
+      return currentUser;
+    } catch (e) {
+      //print("currentUserId: Błąd podczas pobierania danych użytkownika - $e"); // Debugowanie
+      return null;
+    }
+  }
+
 
   @override
   _CallScreenState createState() => _CallScreenState();

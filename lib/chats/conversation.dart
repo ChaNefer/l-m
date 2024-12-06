@@ -8,6 +8,7 @@ import 'package:les_social/pages/call_notification_screen.dart';
 import 'package:les_social/services/auth_service.dart';
 import 'package:les_social/services/call_service.dart';
 import 'package:les_social/services/chat_service.dart';
+import 'package:les_social/services/long_polling_service.dart';
 import 'package:les_social/services/websocket_service.dart';
 import 'package:provider/provider.dart';
 import '../models/chat.dart';
@@ -16,6 +17,7 @@ import '../models/message.dart';
 import '../models/user.dart';
 import '../pages/profile.dart';
 import '../screens/call_screen.dart';
+import '../screens/outgoing_call_screen.dart';
 import '../services/webrtc_service.dart';
 import '../view_models/conversation/conversation_view_model.dart';
 import 'package:intl/intl.dart';
@@ -41,9 +43,9 @@ class _ConversationState extends State<Conversation> {
   late AuthService _authService;
   late ChatService chatService;
   late CallService callService;
+  late LongPollingService longPollingService;
   bool _isExpanded = false;
   final int maxCharacterLimit = 100;
-  final WebSocketService webSocketService = WebSocketService();
 
   @override
   void initState() {
@@ -51,6 +53,7 @@ class _ConversationState extends State<Conversation> {
     scrollController = ScrollController();
     _authService = AuthService();
     callService = CallService();
+    longPollingService = LongPollingService(serverUrl: "https://lesmind.com/api/calls/long_polling_server.php");
     currentUserId();
     scrollController.addListener(() {
       focusNode.unfocus();
@@ -104,37 +107,37 @@ class _ConversationState extends State<Conversation> {
                     IconButton(
                       icon: Icon(Icons.phone, color: Colors.black87),
                       onPressed: () async {
-                        try {
-                          final callData = await WebRTCService().initiateCall('caller_id', 'receiver_id', 'voice');
-                          print('Audio call initiated: $callData');
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => CallNotificationScreen(webSocketService: webSocketService)),
-                          );
+                        final cUser = await currentUserId();
+                        print('Pobrano dane użytkownika: $cUser');
+                        final String? callerId = cUser?.id;
+                        final String? callerUsername = cUser?.username;
+                        final String? callerPhotoUrl = cUser?.photoUrl;
+                        final receiverId = widget.receiver_id;
 
-                        } catch (e) {
-                          print('Error initiating audio call: $e');
+                        // Rozpoczęcie połączenia głosowego
+                        if (callerId != null && receiverId != null) {
+                          await longPollingService.startVoiceCall(callerId, receiverId, callerUsername ?? 'Unknown', callerPhotoUrl ?? '');
                         }
                       },
                     ),
+
                     IconButton(
                       icon: Icon(Icons.videocam, color: Colors.black87),
                       onPressed: () async {
-                        try {
-                          final callData = await WebRTCService().initiateCall('caller_id', 'receiver_id', 'video');
-                          print('Video call initiated: $callData');
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => CallNotificationScreen(webSocketService: webSocketService,)),
-                          );
-                        } catch (e) {
-                          print('Error initiating video call: $e');
+                        final cUser = await currentUserId();
+                        final String? callerId = cUser?.id;
+                        final String? callerUsername = cUser?.username;
+                        final String? callerPhotoUrl = cUser?.photoUrl;
+                        final receiverId = widget.receiver_id;
+
+                        // Rozpoczęcie połączenia wideo
+                        if (callerId != null && receiverId != null) {
+                          await longPollingService.startVideoCall(callerId, receiverId, callerUsername ?? 'Unknown', callerPhotoUrl ?? '');
                         }
                       },
                     ),
                   ],
-                ),
-
+                )
               ],
             ),
           ),

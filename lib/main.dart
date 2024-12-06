@@ -1,15 +1,12 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:les_social/translations/date_mesaage_pl.dart';
+import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'package:provider/provider.dart';
-import 'package:les_social/components/life_cycle_event_handler.dart';
 import 'package:les_social/landing/landing_page.dart';
 import 'package:les_social/screens/mainscreen.dart';
 import 'package:les_social/services/user_service.dart';
-import 'package:les_social/utils/config.dart';
 import 'package:les_social/utils/constants.dart';
 import 'package:les_social/utils/providers.dart';
 import 'package:les_social/view_models/theme/theme_view_model.dart';
@@ -21,37 +18,9 @@ FlutterLocalNotificationsPlugin();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  DateMessagesPl.registerLocale();
 
-  Future<String> fetchSecretKey() async {
-    final String baseUrl = 'https://lesmind.com/api/secret_config.php';
-
-    try {
-      final response = await http.get(Uri.parse(baseUrl));
-      if (response.statusCode == 200) {
-        // Pobranie zawartości odpowiedzi
-        Map<String, dynamic> data = jsonDecode(response.body);
-        // Sprawdzenie czy klucz został poprawnie pobrany
-        if (data.containsKey('secret_config')) {
-          return data['secret_config'];
-        } else {
-          throw Exception('Nie udało się pobrać klucza.');
-        }
-      } else {
-        throw Exception('Błąd podczas pobierania klucza: ${response.statusCode}');
-      }
-    } catch (e) {
-      throw Exception('Błąd podczas pobierania klucza: $e');
-    }
-  }
-
-  try {
-    String secretKey = await fetchSecretKey();
-    //print('Pobrany klucz: $secretKey');
-    // Tutaj możesz wykorzystać pobrany klucz do dalszych operacji
-  } catch (e) {
-    //print('Wystąpił błąd: $e');
-  }
+  // Inicjalizacja OneSignal
+  await initializeOneSignal();
 
   runApp(
     MultiProvider(
@@ -59,6 +28,26 @@ void main() async {
       child: MyApp(),
     ),
   );
+}
+
+Future<void> initializeOneSignal() async {
+  // Initialize OneSignal without await
+  OneSignal.initialize('2db43de7-52bb-45fc-8d06-12b7c07093c5');
+
+  // Configure notification permissions
+  await OneSignal.Notifications.requestPermission(true);
+
+  // Notification received handler
+  OneSignal.Notifications.addForegroundWillDisplayListener((event) {
+    print("Powiadomienie w tle: ${event.notification.notificationId}");
+    event.preventDefault();
+    event.notification;
+  });
+
+  // Notification opened handler
+  OneSignal.Notifications.addClickListener((event) {
+    print("Powiadomienie otwarte: ${event.notification.notificationId}");
+  });
 }
 
 class MyApp extends StatefulWidget {
@@ -79,25 +68,17 @@ class _MyAppState extends State<MyApp> {
   Future<void> _checkIfLoggedIn() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString('jwt_token');
-    String? userId = prefs.getString('userId'); // Pobranie ID użytkownika
+    String? userId = prefs.getString('userId');
 
     setState(() {
       _isLoggedIn = token != null && userId != null;
       _isLoading = false;
     });
 
-    // Initialize UserService and set user status after the login status is checked
     if (_isLoggedIn) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         final userService = Provider.of<UserService>(context, listen: false);
-        userService.setUserStatus(true); // Ustaw status użytkownika
-        WidgetsBinding.instance.addObserver(
-          LifecycleEventHandler(
-            detachedCallBack: () async =>
-            await userService.setUserStatus(false),
-            resumeCallBack: () async => await userService.setUserStatus(true),
-          ),
-        );
+        userService.setUserStatus(true);
       });
     }
   }
@@ -131,6 +112,3 @@ class _MyAppState extends State<MyApp> {
     );
   }
 }
-
-
-
